@@ -1,0 +1,105 @@
+#include "App.h"
+#include <cstdint>
+#include <iostream>
+#include <vulkan/vulkan_core.h>
+#include "Wrapper.h"
+
+namespace VulkanApp{
+
+
+App::App()
+    : mVulkanCore{}
+    , mGraphicsQueue{nullptr}
+    , mNumImages{0}
+    , mCommandBuffers{}
+    , mRenderPass{VK_NULL_HANDLE}
+    , mFrameBuffers{}
+{
+
+}
+
+App::~App()
+{
+    //1. Command buffers will be freed when command pool is destroyed
+    mVulkanCore.freeCommandBuffers(mCommandBuffers.data(), mNumImages);
+
+    // 2. Destroy render pass
+    vkDestroyRenderPass(mVulkanCore.getDevice(), mRenderPass, nullptr);
+
+    //3. Cleanup Vulkan core resources in destructror of VulkanCore
+}
+
+
+void App::init(std::string appName, GLFWwindow *window)
+{
+    mVulkanCore.initialize(appName, window);
+    mNumImages = mVulkanCore.getSwapchainImageCount();
+    mGraphicsQueue = mVulkanCore.getGraphicsQueue();
+    mRenderPass = mVulkanCore.createSimpleRenderPass();
+    mFrameBuffers = mVulkanCore.createFrameBuffer(mRenderPass);
+    createCommandBuffers();
+    recordCommandBuffer();
+}
+
+
+void App::run()
+{
+    // Main application loop here
+    uint32_t imageIndex = mGraphicsQueue->acquireNextImage();
+    mGraphicsQueue->submitAsync(mCommandBuffers[imageIndex]);
+    mGraphicsQueue->presentImage(imageIndex);
+}
+
+
+void App::createCommandBuffers()
+{
+   mCommandBuffers.resize(mNumImages);
+   mVulkanCore.createCommandBuffers(mCommandBuffers.data(), mNumImages);
+}
+
+void App::recordCommandBuffer()
+{
+    VkClearColorValue clearColor = { {0.0F, 1.0F, 0.0F, 1.0F} };
+    VkClearValue clearValue = {};
+    clearValue.color = clearColor;
+
+    VkRenderPassBeginInfo renderPassBeginInfo = {
+        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+        .pNext = nullptr,
+        .renderPass = mRenderPass,
+        .framebuffer = VK_NULL_HANDLE, // will be set later
+        .renderArea = {
+            .offset = {0, 0},
+            .extent = {
+                .width = 800,
+                .height = 600,
+            }
+        },
+        .clearValueCount = 1,
+        .pClearValues = &clearValue
+    };
+
+
+
+    for(uint32_t i = 0; i < mCommandBuffers.size(); ++i)
+    {
+
+
+        // Begin command buffer recording
+        VulkanCore::BeginCommandBuffer(mCommandBuffers[i], VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
+
+        // frame buffer specific info per command buffer
+        renderPassBeginInfo.framebuffer = mFrameBuffers[i];
+        vkCmdBeginRenderPass(mCommandBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+        vkCmdEndRenderPass(mCommandBuffers[i]);
+
+        if(vkEndCommandBuffer(mCommandBuffers[i]) != VK_SUCCESS)
+        {
+            throw std::runtime_error("Failed to record command buffer " + std::to_string(i));
+        }
+    }
+
+    std::cout<< "Recorded " << mCommandBuffers.size() << " command buffers." << std::endl;
+}
+
+}// namespace VulkanApp
