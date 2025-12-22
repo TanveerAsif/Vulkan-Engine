@@ -23,7 +23,7 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ~/.cache/bazel
-        key: bazel-${{ runner.os }}-${{ hashFiles('MODULE.bazel', 'WORKSPACE', '.bazelversion') }}
+        key: bazel-${{ runner.os }}-${{ github.run_id }}
         restore-keys: |
           bazel-${{ runner.os }}-
 
