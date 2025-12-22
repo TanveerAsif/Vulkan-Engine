@@ -13,10 +13,14 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Install Bazel
-      uses: bazelbuild/setup-bazelisk@v3
-      with:
-        cache: false   # 🚨 CRITICAL FIX
+    - name: Install Bazelisk (no cache)
+      run: |
+        curl -L https://github.com/bazelbuild/bazelisk/releases/latest/download/bazelisk-linux-amd64 -o bazel
+        chmod +x bazel
+        sudo mv bazel /usr/local/bin/bazel
+
+    - name: Bazel version
+      run: bazel version
 
     - name: Bazel build
       run: bazel build //...
