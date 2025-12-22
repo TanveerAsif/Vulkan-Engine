@@ -1,4 +1,4 @@
-name: Vulkan-Engine(Bazel)
+name: Vulkan-Engine (Bazel)
 
 on:
   push:
@@ -8,14 +8,16 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v4
+
     - name: Install Bazel
-      run: bazelbuild/setup-bazelisk@v3
+      uses: bazelbuild/setup-bazelisk@v3
+
     - name: Bazel build
       run: bazel build //...
+
     - name: Bazel test
-      run: bazel test //...   
+      run: bazel test //...
