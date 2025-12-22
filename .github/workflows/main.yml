@@ -16,6 +16,14 @@ jobs:
     - name: Install Bazel
       uses: bazelbuild/setup-bazelisk@v3
 
+    - name: Cache Bazel
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/bazel
+        key: bazel-${{ runner.os }}-${{ hashFiles('MODULE.bazel', 'WORKSPACE', '.bazelversion') }}
+        restore-keys: |
+          bazel-${{ runner.os }}-
+
     - name: Bazel build
       run: bazel build //...
 
