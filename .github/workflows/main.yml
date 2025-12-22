@@ -16,6 +16,9 @@ jobs:
     - name: Install Bazel
       uses: bazelbuild/setup-bazelisk@v3
 
+    - name: Install Vulkan SDK
+      run: sudo apt-get update && sudo apt-get install -y libvulkan-dev
+      
     - name: Cache Bazel
       uses: actions/cache@v4
       with:
