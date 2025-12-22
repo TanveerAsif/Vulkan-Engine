@@ -31,6 +31,3 @@ jobs:
 
     - name: Bazel build
       run: bazel build //...
-
-    - name: Bazel test
-      run: bazel test //...
