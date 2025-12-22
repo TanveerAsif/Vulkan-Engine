@@ -30,6 +30,7 @@ namespace VulkanCore {
 
             VkRenderPass createSimpleRenderPass();
             std::vector<VkFramebuffer> createFrameBuffer(VkRenderPass renderPass);
+            void destroyFramebuffers(std::vector<VkFramebuffer>& framebuffers);
 
         private:
             void createInstance(std::string appName);

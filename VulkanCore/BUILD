@@ -5,17 +5,17 @@ cc_library(
     name = "VulkanCore",
     srcs = [
         "Core.cpp",
+        "GraphicsPipeline.cpp",
         "PhysicalDevice.cpp",
         "Queue.cpp",
-        "Wrapper.cpp"
+        "Shader.cpp",
+        "Wrapper.cpp",
     ],
-    hdrs = [
-        "include/Core.h",
-        "include/PhysicalDevice.h",
-        "include/Queue.h",
-        "include/Wrapper.h"
-    ],
+    hdrs = glob(["include/*.h"]),
     includes = ["include"],
+    deps = [
+        "@vulkan_sdk//:vulkan_sdk",
+    ],
     visibility = ["//visibility:public"],
-    linkopts = ["-lvulkan"],
 )
+#sudo apt-get install glslang-dev glslang-tools

@@ -1,3 +1,8 @@
+bazel_dep(name = "vulkan_sdk", version = "1.4.304.1")
+local_path_override(
+    module_name = "vulkan_sdk",
+    path = "/opt/vulkansdk/1.4.304.1/x86_64",
+)
 ###############################################################################
 # Bazel now uses Bzlmod by default to manage external dependencies.
 # Please consider migrating your external dependencies from WORKSPACE to MODULE.bazel.

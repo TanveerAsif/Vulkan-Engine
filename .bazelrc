@@ -1,0 +1,3 @@
+build --action_env=VULKAN_SDK=/opt/vulkansdk/1.4.304.1/x86_64
+build --cxxopt=-std=c++20
+

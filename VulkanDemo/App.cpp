@@ -3,13 +3,16 @@
 #include <iostream>
 #include <vulkan/vulkan_core.h>
 #include "Wrapper.h"
+#include "Shader.h"
 
 namespace VulkanApp{
 
 
 App::App()
-    : mVulkanCore{}
+    : mWindow{nullptr}
+    , mVulkanCore{}
     , mGraphicsQueue{nullptr}
+    , mGraphicsPipeline{nullptr}
     , mNumImages{0}
     , mCommandBuffers{}
     , mRenderPass{VK_NULL_HANDLE}
@@ -23,20 +26,37 @@ App::~App()
     //1. Command buffers will be freed when command pool is destroyed
     mVulkanCore.freeCommandBuffers(mCommandBuffers.data(), mNumImages);
 
-    // 2. Destroy render pass
+    //2. Destroy framebuffers
+    mVulkanCore.destroyFramebuffers(mFrameBuffers);
+
+    //3. Destroy shader modules
+    vkDestroyShaderModule(mVulkanCore.getDevice(), mVSShaderModule, nullptr);
+    vkDestroyShaderModule(mVulkanCore.getDevice(), mFSShaderModule, nullptr);
+
+    //4. Destroy graphics pipeline
+    if(mGraphicsPipeline)
+    {
+        delete mGraphicsPipeline;
+        mGraphicsPipeline = nullptr;
+    }
+
+    //5. Destroy render pass
     vkDestroyRenderPass(mVulkanCore.getDevice(), mRenderPass, nullptr);
 
-    //3. Cleanup Vulkan core resources in destructror of VulkanCore
+    //6. Cleanup Vulkan core resources in destructror of VulkanCore
 }
 
 
 void App::init(std::string appName, GLFWwindow *window)
 {
+    mWindow = window;
     mVulkanCore.initialize(appName, window);
     mNumImages = mVulkanCore.getSwapchainImageCount();
     mGraphicsQueue = mVulkanCore.getGraphicsQueue();
     mRenderPass = mVulkanCore.createSimpleRenderPass();
     mFrameBuffers = mVulkanCore.createFrameBuffer(mRenderPass);
+    createShaders();
+    createPipeline();
     createCommandBuffers();
     recordCommandBuffer();
 }
@@ -83,14 +103,19 @@ void App::recordCommandBuffer()
 
     for(uint32_t i = 0; i < mCommandBuffers.size(); ++i)
     {
-
-
         // Begin command buffer recording
         VulkanCore::BeginCommandBuffer(mCommandBuffers[i], VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
 
         // frame buffer specific info per command buffer
         renderPassBeginInfo.framebuffer = mFrameBuffers[i];
         vkCmdBeginRenderPass(mCommandBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+        mGraphicsPipeline->bind(mCommandBuffers[i]);
+
+        uint32_t vertexCount = 3;
+        uint32_t instanceCount = 1;
+        uint32_t firstVertex = 0;
+        uint32_t firstInstance = 0;
+        vkCmdDraw(mCommandBuffers[i], vertexCount, instanceCount, firstVertex, firstInstance);
         vkCmdEndRenderPass(mCommandBuffers[i]);
 
         if(vkEndCommandBuffer(mCommandBuffers[i]) != VK_SUCCESS)
@@ -100,6 +125,24 @@ void App::recordCommandBuffer()
     }
 
     std::cout<< "Recorded " << mCommandBuffers.size() << " command buffers." << std::endl;
+}
+
+void App::createShaders()
+{
+    mVSShaderModule = VulkanCore::CreateShaderModuleFromText(mVulkanCore.getDevice(), "VulkanDemo/shaders/triangle.vert");
+    mFSShaderModule = VulkanCore::CreateShaderModuleFromText(mVulkanCore.getDevice(), "VulkanDemo/shaders/triangle.frag");
+    std::cout << "Shader modules created successfully." << std::endl;
+
+}
+
+
+void App::createPipeline()
+{
+    mGraphicsPipeline = new VulkanCore::GraphicsPipeline(mVulkanCore.getDevice(),
+                                                        mWindow,
+                                                        mRenderPass,
+                                                        mVSShaderModule,
+                                                        mFSShaderModule);
 }
 
 }// namespace VulkanApp

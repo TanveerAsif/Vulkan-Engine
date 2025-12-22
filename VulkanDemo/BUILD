@@ -8,4 +8,5 @@ cc_binary(
     includes = ["../VulkanCore/include",".", "include"],  # Add "." for local includes
     deps = ["//VulkanCore:VulkanCore"],
     linkopts = ["-lglfw", "-ldl", "-lpthread", "-lX11"],
+    data = glob(["shaders/*"]),
 )

@@ -30,12 +30,6 @@ VulkanCore::VulkanCore()
 VulkanCore::~VulkanCore() {
   std::cout << "........................................." << std::endl;
 
-  // Destroy all framebuffers
-  for (VkFramebuffer framebuffer : mFrameBuffers) {
-    vkDestroyFramebuffer(mLogicalDevice, framebuffer, nullptr);
-  }
-  mFrameBuffers.clear();
-  std::cout<<"Framebuffers destroyed." << std::endl;
 
   mGraphicsQueue.destroySemaphores();
   std::cout << "Graphics queue semaphores destroyed." << std::endl;
@@ -530,6 +524,16 @@ std::vector<VkFramebuffer> VulkanCore::createFrameBuffer(VkRenderPass renderPass
 
   std::cout<<"Created "<< mFrameBuffers.size() <<" framebuffers successfully."<<std::endl;
   return mFrameBuffers;
+}
+
+void VulkanCore::destroyFramebuffers(std::vector<VkFramebuffer>& framebuffers)
+{
+    for (VkFramebuffer framebuffer : framebuffers)
+    {
+        vkDestroyFramebuffer(mLogicalDevice, framebuffer, nullptr);
+    }
+    framebuffers.clear();
+    std::cout<<"Framebuffers destroyed." << std::endl;
 }
 
 } // namespace VulkanCore

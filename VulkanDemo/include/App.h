@@ -7,6 +7,7 @@
 
 #include "Core.h"
 #include "Queue.h"
+#include "GraphicsPipeline.h"
 
 namespace VulkanApp{
 
@@ -22,15 +23,22 @@ public:
 private:
     void createCommandBuffers();
     void recordCommandBuffer();
+    void createShaders();
+    void createPipeline();
 
+    GLFWwindow* mWindow;
     VulkanCore::VulkanCore mVulkanCore;
     VulkanCore::VulkanQueue* mGraphicsQueue;
+    VulkanCore::GraphicsPipeline* mGraphicsPipeline;
 
     int32_t mNumImages;
     std::vector<VkCommandBuffer> mCommandBuffers;
 
     VkRenderPass mRenderPass;
     std::vector<VkFramebuffer> mFrameBuffers;
+
+    VkShaderModule mVSShaderModule;
+    VkShaderModule mFSShaderModule;
 };
 
 } // namespace VulkanApp
