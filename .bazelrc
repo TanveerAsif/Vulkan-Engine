@@ -1,8 +1,8 @@
 build --cxxopt=-std=c++20
 
 # Fix for absolute path inclusion errors in Bazel 7.x
-# Allows GCC system headers to be used without sandbox violations
-build --experimental_strict_action_env=false
+# This allows GCC builtin headers like stddef.h, stdint.h, etc.
+build --noincompatible_sandbox_hermetic_tmp
 
 # Import user-specific configuration (not in git)
 try-import %workspace%/.bazelrc.user
