@@ -1,8 +1,8 @@
 build --cxxopt=-std=c++20
 
-# Allow system headers with absolute paths
-build --features=-layering_check
-build --host_features=-layering_check
+# Fix for absolute path inclusion errors in Bazel 7.x
+# Allows GCC system headers to be used without sandbox violations
+build --experimental_strict_action_env=false
 
 # Import user-specific configuration (not in git)
 try-import %workspace%/.bazelrc.user

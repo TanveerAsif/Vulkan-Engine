@@ -1,4 +1,4 @@
 module(name = "vulkan_workspace")
 
 bazel_dep(name = "rules_foreign_cc", version = "0.11.1")
-bazel_dep(name = "platforms", version = "0.0.10")
+bazel_dep(name = "platforms", version = "0.0.11")
