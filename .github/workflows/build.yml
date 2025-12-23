@@ -104,5 +104,5 @@ jobs:
       run: bazel version
 
     - name: Bazel build
-      run: bazel build --compilation_mode=dbg --noincompatible_sandbox_hermetic_tmp //...
+      run: bazel build --compilation_mode=dbg --strategy=CppCompile=local //...
 
