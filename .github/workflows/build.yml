@@ -46,8 +46,8 @@ jobs:
           sudo mkdir -p /etc/apt/keyrings
           sudo cat /tmp/lunarg-signing-key-pub.asc | sudo gpg --dearmor -o /etc/apt/keyrings/lunarg-archive-keyring.gpg
 
-          # Add LunarG repository - Vulkan SDK 1.4.304.1
-          echo "deb [signed-by=/etc/apt/keyrings/lunarg-archive-keyring.gpg] https://packages.lunarg.com/vulkan/1.4.304.1 $UBUNTU_CODENAME main" | sudo tee /etc/apt/sources.list.d/lunarg-vulkan.list
+          # Add LunarG repository - Latest Vulkan SDK
+          echo "deb [signed-by=/etc/apt/keyrings/lunarg-archive-keyring.gpg] https://packages.lunarg.com/vulkan $UBUNTU_CODENAME main" | sudo tee /etc/apt/sources.list.d/lunarg-vulkan.list
 
           sudo apt-get update
           sudo apt-get install -y vulkan-sdk || {
