@@ -8,9 +8,9 @@ on:
 
 jobs:
   build:
-    # Fixed to Ubuntu 20.04 to match local development environment
-    # and ensure Vulkan SDK 1.4.304.1 focal repository compatibility
-    runs-on: ubuntu-20.04
+    # Using latest Ubuntu for CI
+    # Vulkan SDK 1.4.304.1 supports jammy repository
+    runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v4
@@ -29,10 +29,14 @@ jobs:
         wget -qO /tmp/lunarg-signing-key-pub.asc https://packages.lunarg.com/lunarg-signing-key-pub.asc
         sudo mkdir -p /etc/apt/keyrings
         sudo cat /tmp/lunarg-signing-key-pub.asc | sudo gpg --dearmor -o /etc/apt/keyrings/lunarg-archive-keyring.gpg
-        
-        # Add LunarG repository for Ubuntu 20.04 (focal) - Vulkan SDK 1.4.304.1
-        echo "deb [signed-by=/etc/apt/keyrings/lunarg-archive-keyring.gpg] https://packages.lunarg.com/vulkan/1.4.304.1 focal main" | sudo tee /etc/apt/sources.list.d/lunarg-vulkan.list
-        
+
+        # Detect Ubuntu version and set appropriate repository
+        UBUNTU_CODENAME=$(lsb_release -cs)
+        echo "Detected Ubuntu: $UBUNTU_CODENAME"
+
+        # Add LunarG repository - Vulkan SDK 1.4.304.1
+        echo "deb [signed-by=/etc/apt/keyrings/lunarg-archive-keyring.gpg] https://packages.lunarg.com/vulkan/1.4.304.1 $UBUNTU_CODENAME main" | sudo tee /etc/apt/sources.list.d/lunarg-vulkan.list
+
         sudo apt-get update
         sudo apt-get install -y vulkan-sdk || {
           echo "Vulkan SDK installation failed, trying alternative method..."
