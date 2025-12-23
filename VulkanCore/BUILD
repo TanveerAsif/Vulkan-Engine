@@ -1,6 +1,20 @@
 # Export source and header files for visibility in top-level BUILD
 exports_files(["Core.cpp", "include/Core.h"])
 # Bazel BUILD file for VulkanCore
+
+cc_library(
+    name = "vulkan",
+    linkopts = ["-lvulkan"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "shaderc",
+    linkopts = ["-lshaderc_shared"],
+    visibility = ["//visibility:public"],
+)
+
+
 cc_library(
     name = "VulkanCore",
     srcs = [
@@ -14,7 +28,8 @@ cc_library(
     hdrs = glob(["include/*.h"]),
     includes = ["include"],
     deps = [
-        "@vulkan_sdk//:vulkan_sdk",
+        ":vulkan",
+        ":shaderc",
     ],
     visibility = ["//visibility:public"],
 )

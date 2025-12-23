@@ -1,0 +1,74 @@
+name: Vulkan-Engine (Bazel)
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Cache Bazel
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/bazel
+        key: bazel-${{ runner.os }}-${{ github.ref_name }}
+        restore-keys: |
+          bazel-${{ runner.os }}-
+
+    - name: Install Vulkan SDK with shaderc
+      run: |
+        # Install Vulkan SDK from LunarG (includes shaderc)
+        wget -qO- https://packages.lunarg.com/lunarg-signing-key-pub.asc | sudo tee /etc/apt/trusted.gpg.d/lunarg.asc
+        sudo wget -qO /etc/apt/sources.list.d/lunarg-vulkan-latest.list \
+          https://packages.lunarg.com/vulkan/lunarg-vulkan-latest.list
+        sudo apt-get update
+        sudo apt-get install -y vulkan-sdk
+
+    - name: Install additional dependencies
+      run: |
+        sudo apt-get install -y libglfw3-dev
+
+    - name: Set Vulkan SDK environment
+      run: |
+        # Vulkan SDK installs to /usr with the package
+        VULKAN_SDK_PATH="/usr"
+        echo "VULKAN_SDK=$VULKAN_SDK_PATH" >> $GITHUB_ENV
+
+        # Detect library path dynamically
+        if [ -d "/usr/lib/x86_64-linux-gnu" ]; then
+          LIB_PATH="/usr/lib/x86_64-linux-gnu"
+        else
+          LIB_PATH="/usr/lib"
+        fi
+
+        # Generate .bazelrc.user for CI
+        cat > .bazelrc.user << EOF
+        # CI-generated Bazel configuration
+        build --linkopt=-L$LIB_PATH
+        build --linkopt=-Wl,-rpath,$LIB_PATH
+        EOF
+
+        # Verify shaderc is installed
+        if ! ldconfig -p | grep -q libshaderc; then
+          echo "ERROR: libshaderc not found after Vulkan SDK installation"
+          exit 1
+        fi
+
+    - name: Install Bazelisk (no cache)
+      run: |
+        curl -L https://github.com/bazelbuild/bazelisk/releases/latest/download/bazelisk-linux-amd64 -o bazel
+        chmod +x bazel
+        sudo mv bazel /usr/local/bin/bazel
+
+    - name: Bazel version
+      run: bazel version
+
+    - name: Bazel build
+      run: bazel build --compilation_mode=dbg //...
+
