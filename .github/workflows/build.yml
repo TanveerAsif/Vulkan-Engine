@@ -8,9 +8,10 @@ on:
 
 jobs:
   build:
-    # Using latest Ubuntu for CI
+    # Using Ubuntu 22.04 for CI
     # Vulkan SDK 1.4.304.1 supports jammy repository
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
+
 
     steps:
     - uses: actions/checkout@v4
@@ -25,30 +26,42 @@ jobs:
 
     - name: Install Vulkan SDK with shaderc
       run: |
-        # Download and install Vulkan SDK from LunarG
-        wget -qO /tmp/lunarg-signing-key-pub.asc https://packages.lunarg.com/lunarg-signing-key-pub.asc
-        sudo mkdir -p /etc/apt/keyrings
-        sudo cat /tmp/lunarg-signing-key-pub.asc | sudo gpg --dearmor -o /etc/apt/keyrings/lunarg-archive-keyring.gpg
-
-        # Detect Ubuntu version and set appropriate repository
         UBUNTU_CODENAME=$(lsb_release -cs)
         echo "Detected Ubuntu: $UBUNTU_CODENAME"
-
-        # Add LunarG repository - Vulkan SDK 1.4.304.1
-        echo "deb [signed-by=/etc/apt/keyrings/lunarg-archive-keyring.gpg] https://packages.lunarg.com/vulkan/1.4.304.1 $UBUNTU_CODENAME main" | sudo tee /etc/apt/sources.list.d/lunarg-vulkan.list
-
-        sudo apt-get update
-        sudo apt-get install -y vulkan-sdk || {
-          echo "Vulkan SDK installation failed, trying alternative method..."
+        
+        # For Ubuntu 24.04+ use native packages (LunarG repo not available yet)
+        # For older versions, try LunarG repository first
+        if [[ "$UBUNTU_CODENAME" == "noble" ]]; then
+          echo "Using Ubuntu native Vulkan packages for Ubuntu 24.04"
+          sudo apt-get update
           sudo apt-get install -y \
             libvulkan-dev \
-            vulkan-validationlayers \
+            vulkan-validationlayers-dev \
             spirv-tools \
-            libshaderc-dev || {
-            echo "Alternative installation also failed, building minimal setup..."
-            sudo apt-get install -y libvulkan-dev vulkan-tools
+            libshaderc-dev \
+            vulkan-tools
+        else
+          # Download and install Vulkan SDK from LunarG for older Ubuntu versions
+          wget -qO /tmp/lunarg-signing-key-pub.asc https://packages.lunarg.com/lunarg-signing-key-pub.asc
+          sudo mkdir -p /etc/apt/keyrings
+          sudo cat /tmp/lunarg-signing-key-pub.asc | sudo gpg --dearmor -o /etc/apt/keyrings/lunarg-archive-keyring.gpg
+
+          # Add LunarG repository - Vulkan SDK 1.4.304.1
+          echo "deb [signed-by=/etc/apt/keyrings/lunarg-archive-keyring.gpg] https://packages.lunarg.com/vulkan/1.4.304.1 $UBUNTU_CODENAME main" | sudo tee /etc/apt/sources.list.d/lunarg-vulkan.list
+
+          sudo apt-get update
+          sudo apt-get install -y vulkan-sdk || {
+            echo "Vulkan SDK installation failed, trying alternative method..."
+            sudo apt-get install -y \
+              libvulkan-dev \
+              vulkan-validationlayers \
+              spirv-tools \
+              libshaderc-dev || {
+              echo "Alternative installation also failed, building minimal setup..."
+              sudo apt-get install -y libvulkan-dev vulkan-tools
+            }
           }
-        }
+        fi
 
     - name: Install additional dependencies
       run: |
