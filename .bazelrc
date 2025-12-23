@@ -1,5 +1,9 @@
 build --cxxopt=-std=c++20
 
+build --action_env=CC=/usr/bin/gcc
+build --action_env=CXX=/usr/bin/g++
+
+
 # Fix for absolute path inclusion errors in Bazel 7.x
 # Disable sandbox for C++ compilation to allow GCC builtin headers
 build --strategy=CppCompile=local
