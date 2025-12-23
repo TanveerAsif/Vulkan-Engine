@@ -1,5 +1,9 @@
 build --cxxopt=-std=c++20
 
+# Allow system headers with absolute paths
+build --features=-layering_check
+build --host_features=-layering_check
+
 # Import user-specific configuration (not in git)
 try-import %workspace%/.bazelrc.user
 
