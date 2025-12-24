@@ -171,16 +171,27 @@ void GraphicsPipeline::createDescriptorSets(
 }
 
 void GraphicsPipeline::createDescriptorPool(int32_t numSwapchainImages) {
-  VkDescriptorPoolSize poolSize = {
+  std::vector<VkDescriptorPoolSize> poolSizes;
+
+  // Storage buffer for vertex data
+  VkDescriptorPoolSize storageBufferPoolSize = {
       .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
       .descriptorCount = static_cast<uint32_t>(numSwapchainImages),
   };
+  poolSizes.push_back(storageBufferPoolSize);
+
+  // Uniform buffer for transformation matrices
+  VkDescriptorPoolSize uniformBufferPoolSize = {
+      .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+      .descriptorCount = static_cast<uint32_t>(numSwapchainImages),
+  };
+  poolSizes.push_back(uniformBufferPoolSize);
 
   VkDescriptorPoolCreateInfo poolInfo = {
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
       .maxSets = static_cast<uint32_t>(numSwapchainImages),
-      .poolSizeCount = 1,
-      .pPoolSizes = &poolSize,
+      .poolSizeCount = static_cast<uint32_t>(poolSizes.size()),
+      .pPoolSizes = poolSizes.data(),
   };
 
   if (vkCreateDescriptorPool(mDevice, &poolInfo, nullptr, &mDescriptorPool) !=

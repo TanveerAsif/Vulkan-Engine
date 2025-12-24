@@ -1,6 +1,8 @@
 #include "App.h"
 #include "Shader.h"
 #include "Wrapper.h"
+#include <GLFW/glfw3.h>
+#include <cmath>
 #include <cstdint>
 #include <glm/ext/matrix_float4x4.hpp>
 #include <glm/ext/quaternion_geometric.hpp>
@@ -10,10 +12,11 @@
 
 namespace VulkanApp {
 
-App::App()
-    : mWindow{nullptr}, mVulkanCore{}, mGraphicsQueue{nullptr},
-      mGraphicsPipeline{nullptr}, mNumImages{0}, mCommandBuffers{},
-      mRenderPass{VK_NULL_HANDLE}, mFrameBuffers{} {}
+App::App(int32_t width, int32_t height)
+    : mWindowWidth{width}, mWindowHeight{height}, mWindow{nullptr},
+      mVulkanCore{}, mGraphicsQueue{nullptr}, mGraphicsPipeline{nullptr},
+      mNumImages{0}, mCommandBuffers{}, mRenderPass{VK_NULL_HANDLE},
+      mFrameBuffers{} {}
 
 App::~App() {
   // 1. Command buffers will be freed when command pool is destroyed
@@ -46,9 +49,10 @@ App::~App() {
   // 8. Cleanup Vulkan core resources in destructror of VulkanCore
 }
 
-void App::init(std::string appName, GLFWwindow *window) {
-  mWindow = window;
-  mVulkanCore.initialize(appName, window);
+void App::init(std::string appName) {
+  mWindow = VulkanCore::glfw_vulkan_init(mWindowWidth, mWindowHeight,
+                                         appName.c_str());
+  mVulkanCore.initialize(appName, mWindow);
   mNumImages = mVulkanCore.getSwapchainImageCount();
   mGraphicsQueue = mVulkanCore.getGraphicsQueue();
   mRenderPass = mVulkanCore.createSimpleRenderPass();
@@ -59,14 +63,50 @@ void App::init(std::string appName, GLFWwindow *window) {
   createPipeline();
   createCommandBuffers();
   recordCommandBuffer();
+  // defaultCreateCameraPers();
+  VulkanCore::glfw_vulkan_set_callbacks(mWindow, this);
 }
 
-void App::run() {
+void App::renderScene() {
   // Main application loop here
   uint32_t imageIndex = mGraphicsQueue->acquireNextImage();
   updateUniformBuffer(imageIndex);
   mGraphicsQueue->submitAsync(mCommandBuffers[imageIndex]);
   mGraphicsQueue->presentImage(imageIndex);
+}
+
+void App::run() {
+  float_t currentTime = glfwGetTime();
+
+  while (!glfwWindowShouldClose(mWindow)) {
+    float_t newTime = glfwGetTime();
+    float_t deltaTime = newTime - currentTime;
+    currentTime = newTime;
+
+    // mCamera->update(deltaTime);
+
+    renderScene();
+    glfwPollEvents();
+  }
+
+  glfwTerminate();
+}
+
+void App::onKeyEvent(GLFWwindow *window, int key, int scancode, int action,
+                     int mods) {
+  // Handle keyboard input
+  if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+    glfwSetWindowShouldClose(window, GLFW_TRUE);
+  }
+}
+
+void App::onMouseMove(GLFWwindow *window, double xoffset, double yoffset) {
+  // Handle mouse movement
+}
+
+void App::onMouseButtonEvent(GLFWwindow *window, int button, int action,
+                             int mods) {
+  // Handle mouse button events
 }
 
 void App::createCommandBuffers() {
@@ -173,5 +213,20 @@ void App::updateUniformBuffer(uint32_t currentImage) {
   mUniformBuffers[currentImage].update(mVulkanCore.getDevice(), &wvp,
                                        sizeof(wvp));
 }
+
+/*
+void App::defaultCreateCameraPers() {
+  mCamera = new GLMCameraFirstPerson(
+      glm::vec3(0.0f, 0.0f, 5.0f), // position
+      glm::vec3(0.0f, 0.0f, -1.0f), // lookAt
+      glm::vec3(0.0f, 1.0f, 0.0f),  // up
+      45.0f,                        // fov
+      static_cast<float>(mWindowWidth) /
+          static_cast<float>(mWindowHeight), // aspect ratio
+      0.1f,                                 // near plane
+      1000.0f                                // far plane
+  );
+}
+*/
 
 } // namespace VulkanApp

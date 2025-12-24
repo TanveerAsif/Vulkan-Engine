@@ -19,6 +19,7 @@ cc_library(
     name = "VulkanCore",
     srcs = [
         "Core.cpp",
+        "GLFW.cpp",
         "GraphicsPipeline.cpp",
         "PhysicalDevice.cpp",
         "Queue.cpp",
