@@ -4,7 +4,6 @@
 #include <vector>
 #include <vulkan/vulkan_core.h>
 
-
 namespace VulkanCore {
 
 GraphicsPipeline::GraphicsPipeline(VkDevice device, GLFWwindow *window,
@@ -123,24 +122,23 @@ GraphicsPipeline::GraphicsPipeline(VkDevice device, GLFWwindow *window,
   std::cout << "Graphics pipeline created successfully." << std::endl;
 }
 
-GraphicsPipeline::~GraphicsPipeline()
-{
-    if (mGraphicsPipeline != VK_NULL_HANDLE) {
-        vkDestroyPipeline(mDevice, mGraphicsPipeline, nullptr);
-    }
-    if (mPipelineLayout != VK_NULL_HANDLE) {
-        vkDestroyPipelineLayout(mDevice, mPipelineLayout, nullptr);
-    }
+GraphicsPipeline::~GraphicsPipeline() {
+  if (mGraphicsPipeline != VK_NULL_HANDLE) {
+    vkDestroyPipeline(mDevice, mGraphicsPipeline, nullptr);
+  }
+  if (mPipelineLayout != VK_NULL_HANDLE) {
+    vkDestroyPipelineLayout(mDevice, mPipelineLayout, nullptr);
+  }
 
-    if (mDescriptorPool != VK_NULL_HANDLE) {
-      vkDestroyDescriptorPool(mDevice, mDescriptorPool, nullptr);
-    }
-    if (mDescriptorSetLayout != VK_NULL_HANDLE) {
-      vkDestroyDescriptorSetLayout(mDevice, mDescriptorSetLayout, nullptr);
-    }
-    if (mDescriptorSets.size() > 0) {
-      mDescriptorSets.clear();
-    }
+  if (mDescriptorPool != VK_NULL_HANDLE) {
+    vkDestroyDescriptorPool(mDevice, mDescriptorPool, nullptr);
+  }
+  if (mDescriptorSetLayout != VK_NULL_HANDLE) {
+    vkDestroyDescriptorSetLayout(mDevice, mDescriptorSetLayout, nullptr);
+  }
+  if (mDescriptorSets.size() > 0) {
+    mDescriptorSets.clear();
+  }
 }
 
 void GraphicsPipeline::bind(VkCommandBuffer commandBuffer, int32_t imageIndex) {
@@ -167,9 +165,16 @@ void GraphicsPipeline::createDescriptorSets(const SimpleMesh *mesh,
 }
 
 void GraphicsPipeline::createDescriptorPool(int32_t numSwapchainImages) {
+  VkDescriptorPoolSize poolSize = {
+      .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+      .descriptorCount = static_cast<uint32_t>(numSwapchainImages),
+  };
+
   VkDescriptorPoolCreateInfo poolInfo = {
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
       .maxSets = static_cast<uint32_t>(numSwapchainImages),
+      .poolSizeCount = 1,
+      .pPoolSizes = &poolSize,
   };
 
   if (vkCreateDescriptorPool(mDevice, &poolInfo, nullptr, &mDescriptorPool) !=
