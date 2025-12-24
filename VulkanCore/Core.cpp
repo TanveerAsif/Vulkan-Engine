@@ -9,27 +9,25 @@
 #include <vulkan/vulkan_xcb.h>
 #include <xcb/xcb.h>
 
+#include "Wrapper.h"
+#include <cstring>
+
 namespace VulkanCore {
 
 VulkanCore::VulkanCore()
-    : mVulkanInstance(VK_NULL_HANDLE),
-      mDebugMessenger(VK_NULL_HANDLE),
+    : mVulkanInstance(VK_NULL_HANDLE), mDebugMessenger(VK_NULL_HANDLE),
       mWindow(nullptr),
-      mSurface(VK_NULL_HANDLE),
-      mPhysicalDevice{},
-      mQueueFamilyIndex{0},
-      mLogicalDevice(VK_NULL_HANDLE),
-      mSwapchainSurfaceFormat{},
-      mSwapchain(VK_NULL_HANDLE),
-      mSwapchainImages{},
-      mSwapchainImageViews{},
-      mCommandPool(VK_NULL_HANDLE),
-      mGraphicsQueue{}
-{}
+      mSurface(VK_NULL_HANDLE), mPhysicalDevice{}, mQueueFamilyIndex{0},
+      mLogicalDevice(VK_NULL_HANDLE), mSwapchainSurfaceFormat{},
+      mSwapchain(VK_NULL_HANDLE), mSwapchainImages{}, mSwapchainImageViews{},
+      mCommandPool(VK_NULL_HANDLE), mGraphicsQueue{}, mFrameBuffers{},
+      mCopyCmdBuffer(VK_NULL_HANDLE) {}
 
 VulkanCore::~VulkanCore() {
   std::cout << "........................................." << std::endl;
 
+  vkFreeCommandBuffers(mLogicalDevice, mCommandPool, 1, &mCopyCmdBuffer);
+  std::cout << "Copy command buffer freed." << std::endl;
 
   mGraphicsQueue.destroySemaphores();
   std::cout << "Graphics queue semaphores destroyed." << std::endl;
@@ -94,6 +92,8 @@ void VulkanCore::initialize(std::string appName, GLFWwindow *window) {
 
     // Initialize graphics queue
     mGraphicsQueue.init(mLogicalDevice, mSwapchain, mQueueFamilyIndex, 0);
+
+    createCommandBuffers(&mCopyCmdBuffer, 1);
 }
 
 void VulkanCore::createInstance(std::string appName) {
@@ -534,6 +534,142 @@ void VulkanCore::destroyFramebuffers(std::vector<VkFramebuffer>& framebuffers)
     }
     framebuffers.clear();
     std::cout<<"Framebuffers destroyed." << std::endl;
+}
+
+BufferAndMemory VulkanCore::createVertexBuffer(const void *pVertices,
+                                               size_t size) {
+  // Step1 : create staging buffer
+  VkBufferUsageFlags usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+  VkMemoryPropertyFlags memProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                        VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+  BufferAndMemory stagingVB = createBuffer(size, usage, memProperties);
+
+  // Step2 : map the memory of the stage buffer
+  void *pData;
+  VkDeviceSize offset = 0;
+  VkMemoryMapFlags flags = 0;
+  if (vkMapMemory(mLogicalDevice, stagingVB.mMemory, offset,
+                  stagingVB.mAllocationSize, flags, &pData) != VK_SUCCESS) {
+    throw std::runtime_error("Failed to map vertex buffer memory!");
+  }
+
+  // Step 3 : copy the vertices to the staging buffer
+  memcpy(pData, pVertices, size);
+
+  // step4 : unmao/release the mapped meory
+  vkUnmapMemory(mLogicalDevice, stagingVB.mMemory);
+
+  // Step 5 : create the final vertex buffer with device local memory propertys
+  // usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
+  // VK_BUFFER_USAGE_TRANSFER_DST_BIT; // In General, vertex buffer usage flag
+  // is required since we  are going to follow  Programmable vertex pulling
+  // (PVP) approach so we don't need VK_BUFFER_USAGE_VERTEX_BUFFER_BIT in the
+  // usage flags but STORAGE_BUFFER_BIT is required to use the buffer in the
+  // descriptor set as storage buffer
+  usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+  memProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+  BufferAndMemory vertexBuffer = createBuffer(size, usage, memProperties);
+
+  // Step 6 : copy data from staging buffer to vertex buffer
+  copyBuffer(stagingVB.mBuffer, vertexBuffer.mBuffer, size);
+
+  // Step 7 : destroy staging buffer and free its memory
+  stagingVB.Destroy(mLogicalDevice);
+
+  return vertexBuffer;
+}
+
+BufferAndMemory
+VulkanCore::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
+                         VkMemoryPropertyFlags reqMemPropFlags) {
+  BufferAndMemory bufferAndMemory;
+
+  // Create buffer
+  VkBufferCreateInfo vbCreateInfo = {.sType =
+                                         VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+                                     .pNext = nullptr,
+                                     .flags = 0,
+                                     .size = size,
+                                     .usage = usage,
+                                     .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+                                     .queueFamilyIndexCount = 0,
+                                     .pQueueFamilyIndices = nullptr};
+
+  // Step 1. create buffer
+  if (vkCreateBuffer(mLogicalDevice, &vbCreateInfo, nullptr,
+                     &bufferAndMemory.mBuffer) != VK_SUCCESS) {
+    throw std::runtime_error("Failed to create buffer!");
+  }
+
+  // Step 2. get buffer memory requirements
+  VkMemoryRequirements memRequirements{};
+  vkGetBufferMemoryRequirements(mLogicalDevice, bufferAndMemory.mBuffer,
+                                &memRequirements);
+  std::cout << "Buffer memory requirements: size = " << memRequirements.size
+            << ", alignment = " << memRequirements.alignment
+            << ", memoryTypeBits = " << memRequirements.memoryTypeBits
+            << std::endl;
+  // bufferAndMemory.mAllocationSize = memRequirements.size;
+
+  // Step 3. get the memory type index
+  uint32_t memoryTypeIndex =
+      getMemoryTypeIndex(memRequirements.memoryTypeBits, reqMemPropFlags);
+  std::cout << "Selected memory type index: " << memoryTypeIndex << std::endl;
+
+  VkMemoryAllocateInfo allocInfo = {.sType =
+                                        VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+                                    .pNext = nullptr,
+                                    .allocationSize = memRequirements.size,
+                                    .memoryTypeIndex = memoryTypeIndex};
+
+  // Step 4. allocate memory
+  if (vkAllocateMemory(mLogicalDevice, &allocInfo, nullptr,
+                       &bufferAndMemory.mMemory) != VK_SUCCESS) {
+    throw std::runtime_error("Failed to allocate buffer memory!");
+  }
+
+  // Step 5. Bind buffer and memory
+  vkBindBufferMemory(mLogicalDevice, bufferAndMemory.mBuffer,
+                     bufferAndMemory.mMemory, 0);
+
+  bufferAndMemory.mAllocationSize = memRequirements.size;
+
+  return bufferAndMemory;
+}
+
+uint32_t VulkanCore::getMemoryTypeIndex(uint32_t typeFilter,
+                                        VkMemoryPropertyFlags reqMemPropFlags) {
+  const VkPhysicalDeviceMemoryProperties &memProperties =
+      mPhysicalDevice.getSelectedPhysicalDeviceProperties().mMemoryProperties;
+
+  for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+    const VkMemoryType &memType = memProperties.memoryTypes[i];
+    uint32_t curBitMask = (1 << i);
+    bool isRequiredType = ((typeFilter & curBitMask) != 0);
+    bool hasRequiredProperties =
+        ((memType.propertyFlags & reqMemPropFlags) == reqMemPropFlags);
+
+    if (isRequiredType && hasRequiredProperties) {
+      return i;
+    }
+  }
+
+  std::cout << "Can't find suitable memory type! typeFilter: " << typeFilter
+            << ", properties: " << reqMemPropFlags << std::endl;
+  return -1;
+}
+
+void VulkanCore::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer,
+                            VkDeviceSize size) {
+  BeginCommandBuffer(mCopyCmdBuffer,
+                     VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+  VkBufferCopy copyRegion = {.srcOffset = 0, .dstOffset = 0, .size = size};
+
+  vkCmdCopyBuffer(mCopyCmdBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
+  vkEndCommandBuffer(mCopyCmdBuffer);
+  mGraphicsQueue.submitSync(mCopyCmdBuffer);
+  mGraphicsQueue.waitIdle(); // flush the command buffer
 }
 
 } // namespace VulkanCore

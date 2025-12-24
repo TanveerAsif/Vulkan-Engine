@@ -7,15 +7,16 @@ namespace VulkanCore {
 
     struct PhysicalDeviceProperties
     {
-        VkPhysicalDevice mPhysicalDevice; // Physical device : external GPU , internal GPU , graphics accelerator, 
-        VkPhysicalDeviceProperties mDeviceProperties;
-        std::vector<VkQueueFamilyProperties> mQueueFamilyProperties;
-        std::vector<VkBool32> mQueueSupportPresent;
-        std::vector<VkSurfaceFormatKHR> mSurfaceFormats;
-        std::vector<VkPresentModeKHR> mPresentModes;
-        VkSurfaceCapabilitiesKHR mSurfaceCaps;
-        VkPhysicalDeviceMemoryProperties mMemoryProperties;
-        VkPhysicalDeviceFeatures mFeatures;
+      VkPhysicalDevice mPhysicalDevice; // Physical device : external GPU ,
+                                        // internal GPU , graphics accelerator,
+      VkPhysicalDeviceProperties mDeviceProperties;
+      std::vector<VkQueueFamilyProperties> mQueueFamilyProperties;
+      std::vector<VkBool32> mQueueSupportPresent;
+      std::vector<VkSurfaceFormatKHR> mSurfaceFormats;
+      std::vector<VkPresentModeKHR> mPresentModes;
+      VkSurfaceCapabilitiesKHR mSurfaceCaps;
+      VkPhysicalDeviceMemoryProperties mMemoryProperties;
+      VkPhysicalDeviceFeatures mFeatures;
     };
 
     class PhysicalDevice

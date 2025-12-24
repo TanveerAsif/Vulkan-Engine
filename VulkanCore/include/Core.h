@@ -1,3 +1,6 @@
+#ifndef VULKANCORE_CORE_H
+#define VULKANCORE_CORE_H
+
 #include <cstdint>
 #include <vector>
 #include <vulkan/vulkan.h>
@@ -13,54 +16,88 @@
 
 namespace VulkanCore {
 
-    class VulkanCore
-    {
-        public:
-            VulkanCore();
-            ~VulkanCore();
+class BufferAndMemory {
+public:
+  VkBuffer mBuffer;
+  VkDeviceMemory mMemory;
+  VkDeviceSize mAllocationSize;
 
-            void initialize(std::string appName, GLFWwindow *window);
-            int32_t getSwapchainImageCount() const;
-            void createCommandBuffers(VkCommandBuffer* commandBuffers, int32_t count);
-            void freeCommandBuffers(VkCommandBuffer* commandBuffers, int32_t count);
+  BufferAndMemory()
+      : mBuffer(VK_NULL_HANDLE), mMemory(VK_NULL_HANDLE), mAllocationSize(0) {}
 
-            VkImage getSwapchainImage(int32_t index) const;
-            VulkanQueue* getGraphicsQueue() { return &mGraphicsQueue; }
-            VkDevice getDevice() const { return mLogicalDevice; }
+  void Destroy(VkDevice device) {
+    if (mBuffer != VK_NULL_HANDLE) {
+      vkDestroyBuffer(device, mBuffer, nullptr);
+      mBuffer = VK_NULL_HANDLE;
+    }
+    if (mMemory != VK_NULL_HANDLE) {
+      vkFreeMemory(device, mMemory, nullptr);
+      mMemory = VK_NULL_HANDLE;
+    }
+    mAllocationSize = 0;
+  }
+};
 
-            VkRenderPass createSimpleRenderPass();
-            std::vector<VkFramebuffer> createFrameBuffer(VkRenderPass renderPass);
-            void destroyFramebuffers(std::vector<VkFramebuffer>& framebuffers);
+class VulkanCore {
+public:
+  VulkanCore();
+  ~VulkanCore();
 
-        private:
-            void createInstance(std::string appName);
-            void createDebugCallback();
-            void createSurface(GLFWwindow *window);
-            void createLogicalDevice();
-            void createSwapChain();
-            void createCommandBufferPool();
+  void initialize(std::string appName, GLFWwindow *window);
+  int32_t getSwapchainImageCount() const;
+  void createCommandBuffers(VkCommandBuffer *commandBuffers, int32_t count);
+  void freeCommandBuffers(VkCommandBuffer *commandBuffers, int32_t count);
 
-            VkInstance mVulkanInstance;
-            VkDebugUtilsMessengerEXT mDebugMessenger;
-            GLFWwindow* mWindow;
-            VkSurfaceKHR mSurface;
+  VkImage getSwapchainImage(int32_t index) const;
+  VulkanQueue *getGraphicsQueue() { return &mGraphicsQueue; }
+  VkDevice getDevice() const { return mLogicalDevice; }
 
-            PhysicalDevice mPhysicalDevice;
-            uint32_t mQueueFamilyIndex; // Index of the queue family on selected physical device
+  VkRenderPass createSimpleRenderPass();
+  std::vector<VkFramebuffer> createFrameBuffer(VkRenderPass renderPass);
+  void destroyFramebuffers(std::vector<VkFramebuffer> &framebuffers);
 
-            VkDevice mLogicalDevice;
+  BufferAndMemory createVertexBuffer(const void *pVertices, size_t size);
 
-            // Swapchain handle which maintain the series of images for presentation, format etc.,
-            VkSurfaceFormatKHR mSwapchainSurfaceFormat;
-            VkSwapchainKHR mSwapchain;
-            std::vector<VkImage> mSwapchainImages;
-            std::vector<VkImageView> mSwapchainImageViews;
+private:
+  void createInstance(std::string appName);
+  void createDebugCallback();
+  void createSurface(GLFWwindow *window);
+  void createLogicalDevice();
+  void createSwapChain();
+  void createCommandBufferPool();
+  BufferAndMemory createBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
+                               VkMemoryPropertyFlags properties);
+  uint32_t getMemoryTypeIndex(uint32_t typeFilter,
+                              VkMemoryPropertyFlags properties);
+  void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
-            // Memory pool for command buffers
-            VkCommandPool mCommandPool;
+  VkInstance mVulkanInstance;
+  VkDebugUtilsMessengerEXT mDebugMessenger;
+  GLFWwindow *mWindow;
+  VkSurfaceKHR mSurface;
 
-            VulkanQueue   mGraphicsQueue;
-            std::vector<VkFramebuffer> mFrameBuffers;
-    };
+  PhysicalDevice mPhysicalDevice;
+  uint32_t mQueueFamilyIndex; // Index of the queue family on selected physical
+                              // device
 
-}
+  VkDevice mLogicalDevice;
+
+  // Swapchain handle which maintain the series of images for presentation,
+  // format etc.,
+  VkSurfaceFormatKHR mSwapchainSurfaceFormat;
+  VkSwapchainKHR mSwapchain;
+  std::vector<VkImage> mSwapchainImages;
+  std::vector<VkImageView> mSwapchainImageViews;
+
+  // Memory pool for command buffers
+  VkCommandPool mCommandPool;
+
+  VulkanQueue mGraphicsQueue;
+  std::vector<VkFramebuffer> mFrameBuffers;
+
+  VkCommandBuffer mCopyCmdBuffer;
+};
+
+} // namespace VulkanCore
+
+#endif // VULKANCORE_CORE_H

@@ -23,6 +23,7 @@ cc_library(
         "PhysicalDevice.cpp",
         "Queue.cpp",
         "Shader.cpp",
+        "SimpleMesh.cpp",
         "Wrapper.cpp",
     ],
     hdrs = glob(["include/*.h"]),

@@ -1,9 +1,10 @@
 #include "App.h"
+#include "Shader.h"
+#include "Wrapper.h"
 #include <cstdint>
 #include <iostream>
+#include <vector>
 #include <vulkan/vulkan_core.h>
-#include "Wrapper.h"
-#include "Shader.h"
 
 namespace VulkanApp{
 
@@ -43,7 +44,10 @@ App::~App()
     //5. Destroy render pass
     vkDestroyRenderPass(mVulkanCore.getDevice(), mRenderPass, nullptr);
 
-    //6. Cleanup Vulkan core resources in destructror of VulkanCore
+    // 6. Destroy vertex buffer
+    mMesh.Destroyed(mVulkanCore.getDevice());
+
+    // 7. Cleanup Vulkan core resources in destructror of VulkanCore
 }
 
 
@@ -56,6 +60,7 @@ void App::init(std::string appName, GLFWwindow *window)
     mRenderPass = mVulkanCore.createSimpleRenderPass();
     mFrameBuffers = mVulkanCore.createFrameBuffer(mRenderPass);
     createShaders();
+    createVertexBuffer();
     createPipeline();
     createCommandBuffers();
     recordCommandBuffer();
@@ -138,11 +143,27 @@ void App::createShaders()
 
 void App::createPipeline()
 {
-    mGraphicsPipeline = new VulkanCore::GraphicsPipeline(mVulkanCore.getDevice(),
-                                                        mWindow,
-                                                        mRenderPass,
-                                                        mVSShaderModule,
-                                                        mFSShaderModule);
+  mGraphicsPipeline = new VulkanCore::GraphicsPipeline(
+      mVulkanCore.getDevice(), mWindow, mRenderPass, mVSShaderModule,
+      mFSShaderModule, &mMesh, mNumImages);
+}
+
+void App::createVertexBuffer() {
+  struct Vertex {
+    glm::vec3 pos;
+    glm::vec2 uv;
+  };
+
+  std::vector<Vertex> vertices = {
+      // pos are in NDC
+      {{-1.0F, -1.0F, 0.0F}, {0.0F, 0.0F}}, // top-left
+      {{1.0F, -1.0F, 0.0F}, {0.0F, 1.0F}},  // top-right
+      {{0.0F, 1.0F, 0.0F}, {1.0F, 1.0F}}    // bottom-center
+  };
+
+  mMesh.mVertexBufferSize = sizeof(Vertex) * vertices.size();
+  mMesh.mVertexBuffer =
+      mVulkanCore.createVertexBuffer(vertices.data(), mMesh.mVertexBufferSize);
 }
 
 }// namespace VulkanApp
