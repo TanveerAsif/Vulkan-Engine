@@ -29,6 +29,8 @@ private:
     void createShaders();
     void createPipeline();
     void createVertexBuffer();
+    void createUniformBuffers();
+    void updateUniformBuffer(uint32_t currentImage);
 
     GLFWwindow* mWindow;
     VulkanCore::VulkanCore mVulkanCore;
@@ -44,6 +46,8 @@ private:
 
     VkShaderModule mVSShaderModule;
     VkShaderModule mFSShaderModule;
+
+    std::vector<VulkanCore::BufferAndMemory> mUniformBuffers;
 };
 
 } // namespace VulkanApp

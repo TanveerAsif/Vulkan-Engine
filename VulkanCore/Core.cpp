@@ -10,6 +10,7 @@
 #include <xcb/xcb.h>
 
 #include "Wrapper.h"
+#include "include/Core.h"
 #include <cstring>
 
 namespace VulkanCore {
@@ -670,6 +671,17 @@ void VulkanCore::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer,
   vkEndCommandBuffer(mCopyCmdBuffer);
   mGraphicsQueue.submitSync(mCopyCmdBuffer);
   mGraphicsQueue.waitIdle(); // flush the command buffer
+}
+
+std::vector<BufferAndMemory> VulkanCore::createUniformBuffers(size_t size) {
+  std::vector<BufferAndMemory> uniformBuffers(mSwapchainImages.size());
+  for (int32_t i{0}; i < static_cast<int32_t>(mSwapchainImages.size()); ++i) {
+    VkBufferUsageFlags usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+    VkMemoryPropertyFlags memProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+    uniformBuffers[i] = createBuffer(size, usage, memProperties);
+  }
+  return uniformBuffers;
 }
 
 } // namespace VulkanCore

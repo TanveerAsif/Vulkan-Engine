@@ -6,15 +6,18 @@
 
 namespace VulkanCore {
 
-GraphicsPipeline::GraphicsPipeline(VkDevice device, GLFWwindow *window,
-                                   VkRenderPass renderPass, VkShaderModule vs,
-                                   VkShaderModule fs, const SimpleMesh *pMesh,
-                                   int32_t numSwapchainImages)
+GraphicsPipeline::GraphicsPipeline(
+    VkDevice device, GLFWwindow *window, VkRenderPass renderPass,
+    VkShaderModule vs, VkShaderModule fs, const SimpleMesh *pMesh,
+    int32_t numSwapchainImages,
+    const std::vector<BufferAndMemory> &uniformBuffers,
+    size_t uniformBufferSize)
     : mDevice(device), mPipelineLayout(VK_NULL_HANDLE),
       mGraphicsPipeline(VK_NULL_HANDLE) {
 
   if (pMesh) {
-    createDescriptorSets(pMesh, numSwapchainImages);
+    createDescriptorSets(pMesh, numSwapchainImages, uniformBuffers,
+                         uniformBufferSize);
   }
 
   VkPipelineShaderStageCreateInfo shaderStageInfo[2] = {
@@ -156,12 +159,15 @@ void GraphicsPipeline::bind(VkCommandBuffer commandBuffer, int32_t imageIndex) {
   }
 }
 
-void GraphicsPipeline::createDescriptorSets(const SimpleMesh *mesh,
-                                            int32_t numSwapchainImages) {
+void GraphicsPipeline::createDescriptorSets(
+    const SimpleMesh *mesh, int32_t numSwapchainImages,
+    const std::vector<BufferAndMemory> &uniformBuffers,
+    size_t uniformBufferSize) {
   createDescriptorPool(numSwapchainImages);
-  createDescriptorSetLayout();
+  createDescriptorSetLayout(uniformBuffers, uniformBufferSize);
   allocateDescriptorSets(numSwapchainImages);
-  updateDescriptorSets(mesh, numSwapchainImages);
+  updateDescriptorSets(mesh, numSwapchainImages, uniformBuffers,
+                       uniformBufferSize);
 }
 
 void GraphicsPipeline::createDescriptorPool(int32_t numSwapchainImages) {
@@ -184,7 +190,9 @@ void GraphicsPipeline::createDescriptorPool(int32_t numSwapchainImages) {
   std::cout << "Descriptor pool created successfully." << std::endl;
 }
 
-void GraphicsPipeline::createDescriptorSetLayout() {
+void GraphicsPipeline::createDescriptorSetLayout(
+    const std::vector<BufferAndMemory> &uniformBuffers,
+    size_t uniformBufferSize) {
   std::vector<VkDescriptorSetLayoutBinding> layoutBindings;
 
   VkDescriptorSetLayoutBinding vertexShaderLayoutBinding_VB = {
@@ -194,6 +202,16 @@ void GraphicsPipeline::createDescriptorSetLayout() {
       .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
   };
   layoutBindings.push_back(vertexShaderLayoutBinding_VB);
+
+  VkDescriptorSetLayoutBinding uniformBufferLayoutBinding_UBO = {
+      .binding = 1,
+      .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+      .descriptorCount = 1,
+      .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+  };
+
+  if (uniformBuffers.size() > 0)
+    layoutBindings.push_back(uniformBufferLayoutBinding_UBO);
 
   VkDescriptorSetLayoutCreateInfo layoutInfo = {
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
@@ -227,8 +245,10 @@ void GraphicsPipeline::allocateDescriptorSets(int32_t numSwapchainImages) {
   std::cout << "Descriptor sets allocated successfully." << std::endl;
 }
 
-void GraphicsPipeline::updateDescriptorSets(const SimpleMesh *mesh,
-                                            int32_t numSwapchainImages) {
+void GraphicsPipeline::updateDescriptorSets(
+    const SimpleMesh *mesh, int32_t numSwapchainImages,
+    const std::vector<BufferAndMemory> &uniformBuffers,
+    size_t uniformBufferSize) {
   VkDescriptorBufferInfo bufferInfo_VB = {
       .buffer = mesh->mVertexBuffer.mBuffer,
       .offset = 0,
@@ -247,6 +267,25 @@ void GraphicsPipeline::updateDescriptorSets(const SimpleMesh *mesh,
         .pBufferInfo = &bufferInfo_VB,
     };
     writeDescriptorSets.push_back(descriptorWrite);
+
+    if (uniformBuffers.size() > 0) {
+      VkDescriptorBufferInfo bufferInfo_UBO = {
+          .buffer = uniformBuffers[i].mBuffer,
+          .offset = 0,
+          .range = uniformBufferSize,
+      };
+
+      VkWriteDescriptorSet descriptorWrite_UBO = {
+          .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .dstSet = mDescriptorSets[i],
+          .dstBinding = 1,
+          .dstArrayElement = 0,
+          .descriptorCount = 1,
+          .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+          .pBufferInfo = &bufferInfo_UBO,
+      };
+      writeDescriptorSets.push_back(descriptorWrite_UBO);
+    }
   }
   vkUpdateDescriptorSets(mDevice,
                          static_cast<uint32_t>(writeDescriptorSets.size()),

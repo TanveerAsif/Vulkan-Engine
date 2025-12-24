@@ -13,6 +13,7 @@
 
 #include "PhysicalDevice.h"
 #include "Queue.h"
+#include <cstring>
 
 namespace VulkanCore {
 
@@ -36,6 +37,14 @@ public:
     }
     mAllocationSize = 0;
   }
+
+  void update(VkDevice device, const void *pData, VkDeviceSize size) {
+    void *mappedData = nullptr;
+    if (vkMapMemory(device, mMemory, 0, size, 0, &mappedData) == VK_SUCCESS) {
+      memcpy(mappedData, pData, static_cast<size_t>(size));
+      vkUnmapMemory(device, mMemory);
+    }
+  }
 };
 
 class VulkanCore {
@@ -57,6 +66,7 @@ public:
   void destroyFramebuffers(std::vector<VkFramebuffer> &framebuffers);
 
   BufferAndMemory createVertexBuffer(const void *pVertices, size_t size);
+  std::vector<BufferAndMemory> createUniformBuffers(size_t size);
 
 private:
   void createInstance(std::string appName);
