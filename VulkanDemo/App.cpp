@@ -114,7 +114,7 @@ void App::recordCommandBuffer()
         // frame buffer specific info per command buffer
         renderPassBeginInfo.framebuffer = mFrameBuffers[i];
         vkCmdBeginRenderPass(mCommandBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-        mGraphicsPipeline->bind(mCommandBuffers[i]);
+        mGraphicsPipeline->bind(mCommandBuffers[i], i);
 
         uint32_t vertexCount = 3;
         uint32_t instanceCount = 1;

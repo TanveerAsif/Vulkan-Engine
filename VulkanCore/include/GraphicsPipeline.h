@@ -12,15 +12,27 @@ namespace VulkanCore {
           GraphicsPipeline(VkDevice device, GLFWwindow *window,
                            VkRenderPass renderPass,
                            VkShaderModule vertShaderModule,
-                           VkShaderModule fragShaderModule, SimpleMesh *mesh,
-                           int32_t numSwapchainImages);
+                           VkShaderModule fragShaderModule,
+                           const SimpleMesh *mesh, int32_t numSwapchainImages);
           ~GraphicsPipeline();
-          void bind(VkCommandBuffer commandBuffer);
+          void bind(VkCommandBuffer commandBuffer, int32_t imageIndex);
 
         private:
-            VkDevice mDevice;
-            VkPipelineLayout mPipelineLayout;
-            VkPipeline mGraphicsPipeline;
+          void createDescriptorSets(const SimpleMesh *mesh,
+                                    int32_t numSwapchainImages);
+          void createDescriptorPool(int32_t numSwapchainImages);
+          void createDescriptorSetLayout();
+          void allocateDescriptorSets(int32_t numSwapchainImages);
+          void updateDescriptorSets(const SimpleMesh *mesh,
+                                    int32_t numSwapchainImages);
+
+          VkDevice mDevice;
+          VkPipelineLayout mPipelineLayout;
+          VkPipeline mGraphicsPipeline;
+
+          VkDescriptorPool mDescriptorPool;
+          VkDescriptorSetLayout mDescriptorSetLayout;
+          std::vector<VkDescriptorSet> mDescriptorSets;
     };
 
 
