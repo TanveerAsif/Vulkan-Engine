@@ -2,6 +2,8 @@
 #include "Shader.h"
 #include "Wrapper.h"
 #include <cstdint>
+#include <glm/ext/matrix_float4x4.hpp>
+#include <glm/ext/quaternion_geometric.hpp>
 #include <iostream>
 #include <vector>
 #include <vulkan/vulkan_core.h>
@@ -161,7 +163,13 @@ void App::createUniformBuffers() {
 }
 
 void App::updateUniformBuffer(uint32_t currentImage) {
-  glm::mat4 wvp = glm::mat4(1.0f);
+  static float_t time = 0.0f;
+  glm::mat4 rotate = glm::mat4(1.0f);
+  rotate = glm::rotate(rotate, glm::radians(time),
+                       glm::normalize(glm::vec3(0.0f, 0.0f, 1.0f)));
+  time += 0.1f; // assuming 60 FPS for simplicity
+
+  glm::mat4 wvp = rotate;
   mUniformBuffers[currentImage].update(mVulkanCore.getDevice(), &wvp,
                                        sizeof(wvp));
 }
