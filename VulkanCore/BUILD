@@ -18,11 +18,14 @@ cc_library(
 cc_library(
     name = "VulkanCore",
     srcs = [
+        "Camera.cpp",
         "Core.cpp",
+        "GLFW.cpp",
         "GraphicsPipeline.cpp",
         "PhysicalDevice.cpp",
         "Queue.cpp",
         "Shader.cpp",
+        "SimpleMesh.cpp",
         "Wrapper.cpp",
     ],
     hdrs = glob(["include/*.h"]),
@@ -30,6 +33,7 @@ cc_library(
     deps = [
         ":vulkan",
         ":shaderc",
+        "//third_party:stb_image",
     ],
     visibility = ["//visibility:public"],
 )

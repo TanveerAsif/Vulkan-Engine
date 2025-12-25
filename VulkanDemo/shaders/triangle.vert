@@ -1,11 +1,22 @@
 #version 460
 
-vec2 pos[3] = vec2[](
-    vec2(0.0, -0.5),
-    vec2(0.5, 0.5),
-    vec2(-0.5, 0.5)
-);
+struct VertexData {
+    float x;
+    float y;
+    float z;
+
+    float u;
+    float v;
+};
+
+layout(binding = 0) readonly buffer Vertices{ VertexData vertices[]; }  in_vertices;
+layout(binding = 1) readonly uniform UniformBuffer{ mat4 wvp;} ubo;
+layout(location = 0) out vec2 texCoord;
 
 void main() {
-    gl_Position = vec4(pos[gl_VertexIndex], 0.0, 1.0);
+    VertexData vertex = in_vertices.vertices[gl_VertexIndex];
+    vec3 pos = vec3(vertex.x, vertex.y, vertex.z);
+    gl_Position = ubo.wvp * vec4(pos, 1.0);
+
+    texCoord = vec2(vertex.u, vertex.v);
 }
