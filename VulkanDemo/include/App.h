@@ -8,6 +8,7 @@
 #include <vector>
 #include <vulkan/vulkan_core.h>
 
+#include "Camera.h"
 #include "Core.h"
 #include "GLFW.h"
 #include "GraphicsPipeline.h"
@@ -59,7 +60,7 @@ private:
 
   std::vector<VulkanCore::BufferAndMemory> mUniformBuffers;
   int32_t mWindowWidth, mWindowHeight;
-  // VulkanCore::Camera* mCamera;
+  VulkanCore::Camera *mCamera;
 };
 
 } // namespace VulkanApp

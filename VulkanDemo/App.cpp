@@ -13,10 +13,10 @@
 namespace VulkanApp {
 
 App::App(int32_t width, int32_t height)
-    : mWindowWidth{width}, mWindowHeight{height}, mWindow{nullptr},
-      mVulkanCore{}, mGraphicsQueue{nullptr}, mGraphicsPipeline{nullptr},
-      mNumImages{0}, mCommandBuffers{}, mRenderPass{VK_NULL_HANDLE},
-      mFrameBuffers{} {}
+    : mWindow{nullptr}, mVulkanCore{}, mGraphicsQueue{nullptr},
+      mGraphicsPipeline{nullptr}, mNumImages{0}, mCommandBuffers{},
+      mRenderPass{VK_NULL_HANDLE}, mFrameBuffers{}, mWindowWidth{width},
+      mWindowHeight{height}, mCamera{nullptr} {}
 
 App::~App() {
   // 1. Command buffers will be freed when command pool is destroyed
@@ -46,7 +46,13 @@ App::~App() {
     uniformBuffer.Destroy(mVulkanCore.getDevice());
   }
 
-  // 8. Cleanup Vulkan core resources in destructror of VulkanCore
+  // 8. Delete camera
+  if (mCamera) {
+    delete mCamera;
+    mCamera = nullptr;
+  }
+
+  // 9. Cleanup Vulkan core resources in destructror of VulkanCore
 }
 
 void App::init(std::string appName) {
@@ -63,7 +69,7 @@ void App::init(std::string appName) {
   createPipeline();
   createCommandBuffers();
   recordCommandBuffer();
-  // defaultCreateCameraPers();
+  defaultCreateCameraPers();
   VulkanCore::glfw_vulkan_set_callbacks(mWindow, this);
 }
 
@@ -83,7 +89,7 @@ void App::run() {
     float_t deltaTime = newTime - currentTime;
     currentTime = newTime;
 
-    // mCamera->update(deltaTime);
+    mCamera->process(mWindow, deltaTime);
 
     renderScene();
     glfwPollEvents();
@@ -209,24 +215,22 @@ void App::updateUniformBuffer(uint32_t currentImage) {
                        glm::normalize(glm::vec3(0.0f, 0.0f, 1.0f)));
   time += 0.1f; // assuming 60 FPS for simplicity
 
-  glm::mat4 wvp = rotate;
+  glm::mat4 wvp = mCamera->getVPMatrix() * rotate;
   mUniformBuffers[currentImage].update(mVulkanCore.getDevice(), &wvp,
                                        sizeof(wvp));
 }
 
-/*
 void App::defaultCreateCameraPers() {
-  mCamera = new GLMCameraFirstPerson(
-      glm::vec3(0.0f, 0.0f, 5.0f), // position
-      glm::vec3(0.0f, 0.0f, -1.0f), // lookAt
+  mCamera = new VulkanCore::Camera(
+      glm::vec3(0.0f, 0.0f, -5.0f), // position
+      glm::vec3(0.0f, 0.0f, 1.0f),  // lookAt
       glm::vec3(0.0f, 1.0f, 0.0f),  // up
       45.0f,                        // fov
       static_cast<float>(mWindowWidth) /
           static_cast<float>(mWindowHeight), // aspect ratio
-      0.1f,                                 // near plane
+      0.1f,                                  // near plane
       1000.0f                                // far plane
   );
 }
-*/
 
 } // namespace VulkanApp

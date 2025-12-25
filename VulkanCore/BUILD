@@ -18,6 +18,7 @@ cc_library(
 cc_library(
     name = "VulkanCore",
     srcs = [
+        "Camera.cpp",
         "Core.cpp",
         "GLFW.cpp",
         "GraphicsPipeline.cpp",
