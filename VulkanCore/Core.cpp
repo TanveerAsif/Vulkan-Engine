@@ -684,4 +684,25 @@ std::vector<BufferAndMemory> VulkanCore::createUniformBuffers(size_t size) {
   return uniformBuffers;
 }
 
+void BufferAndMemory::Destroy(VkDevice device) {
+  if (mBuffer != VK_NULL_HANDLE) {
+    vkDestroyBuffer(device, mBuffer, nullptr);
+    mBuffer = VK_NULL_HANDLE;
+  }
+  if (mMemory != VK_NULL_HANDLE) {
+    vkFreeMemory(device, mMemory, nullptr);
+    mMemory = VK_NULL_HANDLE;
+  }
+  mAllocationSize = 0;
+}
+
+void BufferAndMemory::update(VkDevice device, const void *pData,
+                             VkDeviceSize size) {
+  void *mappedData = nullptr;
+  if (vkMapMemory(device, mMemory, 0, size, 0, &mappedData) == VK_SUCCESS) {
+    memcpy(mappedData, pData, static_cast<size_t>(size));
+    vkUnmapMemory(device, mMemory);
+  }
+}
+
 } // namespace VulkanCore
