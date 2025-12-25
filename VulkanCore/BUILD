@@ -33,6 +33,7 @@ cc_library(
     deps = [
         ":vulkan",
         ":shaderc",
+        "//third_party:stb_image",
     ],
     visibility = ["//visibility:public"],
 )

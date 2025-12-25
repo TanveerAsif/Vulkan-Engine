@@ -64,7 +64,7 @@ void App::init(std::string appName) {
   mRenderPass = mVulkanCore.createSimpleRenderPass();
   mFrameBuffers = mVulkanCore.createFrameBuffer(mRenderPass);
   createShaders();
-  createVertexBuffer();
+  createMesh();
   createUniformBuffers();
   createPipeline();
   createCommandBuffers();
@@ -227,7 +227,7 @@ void App::recordCommandBuffer() {
                          VK_SUBPASS_CONTENTS_INLINE);
     mGraphicsPipeline->bind(mCommandBuffers[i], i);
 
-    uint32_t vertexCount = 3;
+    uint32_t vertexCount = 6;
     uint32_t instanceCount = 1;
     uint32_t firstVertex = 0;
     uint32_t firstInstance = 0;
@@ -271,9 +271,13 @@ void App::createVertexBuffer() {
 
   std::vector<Vertex> vertices = {
       // pos are in NDC
-      {{-1.0F, -1.0F, 0.0F}, {0.0F, 0.0F}}, // top-left
-      {{1.0F, -1.0F, 0.0F}, {0.0F, 1.0F}},  // top-right
-      {{0.0F, 1.0F, 0.0F}, {1.0F, 1.0F}}    // bottom-center
+      {{-1.0F, -1.0F, 0.0F}, {0.0F, 0.0F}}, // bottom left
+      {{-1.0F, 1.0F, 0.0F}, {0.0F, 1.0F}},  // top left
+      {{1.0F, 1.0F, 0.0F}, {1.0F, 1.0F}},   // top right
+
+      {{-1.0F, -1.0F, 0.0F}, {0.0F, 0.0F}}, // bottom left
+      {{1.0F, 1.0F, 0.0F}, {1.0F, 1.0F}},   // top right
+      {{1.0F, -1.0F, 0.0F}, {1.0F, 0.0F}}   // bottom right
   };
 
   mMesh.mVertexBufferSize = sizeof(Vertex) * vertices.size();
@@ -308,6 +312,16 @@ void App::defaultCreateCameraPers() {
       0.1f,                                  // near plane
       1000.0f                                // far plane
   );
+}
+
+void App::createMesh() {
+  createVertexBuffer();
+  loadTexture();
+}
+
+void App::loadTexture() {
+  mMesh.mTexture = new VulkanCore::VulkanTexture();
+  mVulkanCore.createTexture("VulkanDemo/assets/wall.jpg", *(mMesh.mTexture));
 }
 
 } // namespace VulkanApp

@@ -30,6 +30,23 @@ public:
   void update(VkDevice device, const void *pData, VkDeviceSize size);
 };
 
+class VulkanTexture {
+public:
+  VkImage mImage;
+  VkDeviceMemory mImageMemory;
+  VkImageView mImageView;
+  VkSampler mSampler;
+  uint32_t mWidth;
+  uint32_t mHeight;
+
+  VulkanTexture()
+      : mImage(VK_NULL_HANDLE), mImageMemory(VK_NULL_HANDLE),
+        mImageView(VK_NULL_HANDLE), mSampler(VK_NULL_HANDLE), mWidth(0),
+        mHeight(0) {}
+
+  void Destroy(VkDevice device);
+};
+
 class VulkanCore {
 public:
   VulkanCore();
@@ -51,6 +68,8 @@ public:
   BufferAndMemory createVertexBuffer(const void *pVertices, size_t size);
   std::vector<BufferAndMemory> createUniformBuffers(size_t size);
 
+  void createTexture(std::string filePath, VulkanTexture &outTexture);
+
 private:
   void createInstance(std::string appName);
   void createDebugCallback();
@@ -63,6 +82,21 @@ private:
   uint32_t getMemoryTypeIndex(uint32_t typeFilter,
                               VkMemoryPropertyFlags properties);
   void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+
+  void createTextureImageFromData(VulkanTexture &outTexture, const void *pixels,
+                                  int texWidth, int texHeight,
+                                  VkFormat imageFormat);
+  void createImage(VulkanTexture &outTexture, uint32_t width, uint32_t height,
+                   VkFormat format, VkImageUsageFlags usage,
+                   VkMemoryPropertyFlags memProperties);
+  void updateTextureImage(VulkanTexture &outTexture, uint32_t width,
+                          uint32_t height, VkFormat format, const void *pixels);
+
+  void transitionImageLayout(VkImage image, VkFormat format,
+                             VkImageLayout oldLayout, VkImageLayout newLayout);
+  void submitCopyCommand();
+  void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width,
+                         uint32_t height);
 
   VkInstance mVulkanInstance;
   VkDebugUtilsMessengerEXT mDebugMessenger;

@@ -42,6 +42,8 @@ private:
   void updateUniformBuffer(uint32_t currentImage);
   void defaultCreateCameraPers();
   void renderScene();
+  void createMesh();
+  void loadTexture();
 
   GLFWwindow *mWindow;
   VulkanCore::VulkanCore mVulkanCore;

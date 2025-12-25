@@ -1,4 +1,5 @@
 #include "GraphicsPipeline.h"
+#include "include/Core.h"
 #include <cstdint>
 #include <iostream>
 #include <vector>
@@ -164,7 +165,7 @@ void GraphicsPipeline::createDescriptorSets(
     const std::vector<BufferAndMemory> &uniformBuffers,
     size_t uniformBufferSize) {
   createDescriptorPool(numSwapchainImages);
-  createDescriptorSetLayout(uniformBuffers, uniformBufferSize);
+  createDescriptorSetLayout(uniformBuffers, uniformBufferSize, mesh->mTexture);
   allocateDescriptorSets(numSwapchainImages);
   updateDescriptorSets(mesh, numSwapchainImages, uniformBuffers,
                        uniformBufferSize);
@@ -187,6 +188,12 @@ void GraphicsPipeline::createDescriptorPool(int32_t numSwapchainImages) {
   };
   poolSizes.push_back(uniformBufferPoolSize);
 
+  VkDescriptorPoolSize imageSamplerPoolSize = {
+      .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+      .descriptorCount = static_cast<uint32_t>(numSwapchainImages),
+  };
+  poolSizes.push_back(imageSamplerPoolSize);
+
   VkDescriptorPoolCreateInfo poolInfo = {
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
       .maxSets = static_cast<uint32_t>(numSwapchainImages),
@@ -203,7 +210,7 @@ void GraphicsPipeline::createDescriptorPool(int32_t numSwapchainImages) {
 
 void GraphicsPipeline::createDescriptorSetLayout(
     const std::vector<BufferAndMemory> &uniformBuffers,
-    size_t uniformBufferSize) {
+    size_t uniformBufferSize, VulkanTexture *texture) {
   std::vector<VkDescriptorSetLayoutBinding> layoutBindings;
 
   VkDescriptorSetLayoutBinding vertexShaderLayoutBinding_VB = {
@@ -221,8 +228,19 @@ void GraphicsPipeline::createDescriptorSetLayout(
       .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
   };
 
-  if (uniformBuffers.size() > 0)
+  if (uniformBuffers.size() > 0) {
     layoutBindings.push_back(uniformBufferLayoutBinding_UBO);
+  }
+
+  VkDescriptorSetLayoutBinding fragmentShaderLayoutBinding_SAMPLER = {
+      .binding = 2,
+      .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+      .descriptorCount = 1,
+      .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+  };
+  if (texture != VK_NULL_HANDLE) {
+    layoutBindings.push_back(fragmentShaderLayoutBinding_SAMPLER);
+  }
 
   VkDescriptorSetLayoutCreateInfo layoutInfo = {
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
@@ -266,6 +284,15 @@ void GraphicsPipeline::updateDescriptorSets(
       .range = mesh->mVertexBufferSize,
   };
 
+  VkDescriptorImageInfo imageInfo_SAMPLER;
+  if (mesh->mTexture) {
+    imageInfo_SAMPLER = {
+        .sampler = mesh->mTexture->mSampler,
+        .imageView = mesh->mTexture->mImageView,
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+    };
+  }
+
   std::vector<VkWriteDescriptorSet> writeDescriptorSets;
   for (int32_t i = 0; i < numSwapchainImages; ++i) {
     VkWriteDescriptorSet descriptorWrite = {
@@ -296,6 +323,19 @@ void GraphicsPipeline::updateDescriptorSets(
           .pBufferInfo = &bufferInfo_UBO,
       };
       writeDescriptorSets.push_back(descriptorWrite_UBO);
+    }
+
+    if (mesh->mTexture) {
+      VkWriteDescriptorSet descriptorWrite_SAMPLER = {
+          .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .dstSet = mDescriptorSets[i],
+          .dstBinding = 2,
+          .dstArrayElement = 0,
+          .descriptorCount = 1,
+          .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+          .pImageInfo = &imageInfo_SAMPLER,
+      };
+      writeDescriptorSets.push_back(descriptorWrite_SAMPLER);
     }
   }
   vkUpdateDescriptorSets(mDevice,
