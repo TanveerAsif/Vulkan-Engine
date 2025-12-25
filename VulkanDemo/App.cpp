@@ -88,8 +88,8 @@ void App::run() {
     float_t newTime = glfwGetTime();
     float_t deltaTime = newTime - currentTime;
     currentTime = newTime;
-
-    mCamera->process(mWindow, deltaTime);
+    mCamera->setTick(deltaTime);
+    mCamera->process();
 
     renderScene();
     glfwPollEvents();
@@ -103,6 +103,83 @@ void App::onKeyEvent(GLFWwindow *window, int key, int scancode, int action,
   // Handle keyboard input
   if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
     glfwSetWindowShouldClose(window, GLFW_TRUE);
+  }
+
+  if ((glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS ||
+       glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS)) {
+    mCamera->setSpeed(100.0f);
+  }
+
+  float_t _fTick = mCamera->getTick();
+  float_t _fSpeed = mCamera->getSpeed();
+  float_t _fRotSpeed = mCamera->getRotSpeed();
+  // Move Up
+  if (glfwGetKey(window, GLFW_KEY_PAGE_UP) == GLFW_PRESS) {
+    // m_vPos += m_vUp * (float)_fTick * m_fSpeed;
+    mCamera->setPosition(mCamera->getPosition() +
+                         mCamera->getUp() * _fSpeed * _fTick);
+  }
+
+  // Move Down
+  if (glfwGetKey(window, GLFW_KEY_PAGE_DOWN) == GLFW_PRESS) {
+    mCamera->setPosition(mCamera->getPosition() -
+                         mCamera->getUp() * _fSpeed * _fTick);
+  }
+
+  // Move forward
+  if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
+    mCamera->setPosition(mCamera->getPosition() +
+                         mCamera->getDir() * _fSpeed * _fTick);
+  }
+
+  // Move backward
+  if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
+    mCamera->setPosition(mCamera->getPosition() -
+                         mCamera->getDir() * _fSpeed * _fTick);
+  }
+
+  // Strafe right
+  if ((glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) &&
+      ((glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) != GLFW_PRESS) ||
+       (glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) != GLFW_PRESS))) {
+    glm::vec3 right = mCamera->GetRight();
+    mCamera->setPosition(mCamera->getPosition() - right * _fTick * _fSpeed);
+  }
+
+  // Strafe left
+  if ((glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) &&
+      ((glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) != GLFW_PRESS) ||
+       (glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) != GLFW_PRESS))) {
+    glm::vec3 right = mCamera->GetRight();
+    mCamera->setPosition(mCamera->getPosition() + right * _fTick * _fSpeed);
+  }
+
+  // CTRL + LEFT : CLOCKWISE ROTATION
+  if (((glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS) ||
+       (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)) &&
+      (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)) {
+    mCamera->setYaw(mCamera->getYaw() + 1.0F * _fRotSpeed);
+  }
+
+  // CTRL + RIGHT : ANTI-CLOCKWISE ROTATION
+  if (((glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS) ||
+       (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)) &&
+      (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)) {
+    mCamera->setYaw(mCamera->getYaw() - 1.0F * _fRotSpeed);
+  }
+
+  // ALT + LEFT : CLOCKWISE ROTATION
+  if (((glfwGetKey(window, GLFW_KEY_RIGHT_ALT) == GLFW_PRESS) ||
+       (glfwGetKey(window, GLFW_KEY_LEFT_ALT) == GLFW_PRESS)) &&
+      (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)) {
+    mCamera->setPitch(mCamera->getPitch() + 1.0F * _fRotSpeed);
+  }
+
+  // ALT + RIGHT : ANTI-CLOCKWISE ROTATION
+  if (((glfwGetKey(window, GLFW_KEY_RIGHT_ALT) == GLFW_PRESS) ||
+       (glfwGetKey(window, GLFW_KEY_LEFT_ALT) == GLFW_PRESS)) &&
+      (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)) {
+    mCamera->setPitch(mCamera->getPitch() - 1.0F * _fRotSpeed);
   }
 }
 
