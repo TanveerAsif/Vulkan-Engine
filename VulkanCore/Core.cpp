@@ -42,6 +42,13 @@ VulkanCore::~VulkanCore() {
     mCommandPool = VK_NULL_HANDLE;
   }
 
+  // Destroy depth resources
+  for (auto &depthImage : mDepthImages) {
+    depthImage.Destroy(mLogicalDevice);
+  }
+  mDepthImages.clear();
+  std::cout << "Depth resources destroyed." << std::endl;
+
   // Destroy all image views associated with the swapchain and swapchain itself
   for (int32_t i = 0; i < static_cast<int32_t>(mSwapchainImageViews.size());
        ++i) {
@@ -82,9 +89,11 @@ VulkanCore::~VulkanCore() {
   }
 }
 
-void VulkanCore::initialize(std::string appName, GLFWwindow *window) {
+void VulkanCore::initialize(std::string appName, GLFWwindow *window,
+                            bool depthEnabled) {
 
   mWindow = window;
+  mDepthEnabled = depthEnabled;
   createInstance(appName);
   createDebugCallback();
   createSurface(mWindow);
@@ -99,6 +108,10 @@ void VulkanCore::initialize(std::string appName, GLFWwindow *window) {
   mGraphicsQueue.init(mLogicalDevice, mSwapchain, mQueueFamilyIndex, 0);
 
   createCommandBuffers(&mCopyCmdBuffer, 1);
+
+  if (mDepthEnabled) {
+    createDepthResources();
+  }
 }
 
 void VulkanCore::createInstance(std::string appName) {
@@ -467,7 +480,7 @@ VkRenderPass VulkanCore::createSimpleRenderPass() {
   // and call vkCreateRenderPass to create a render pass suitable for basic
   // rendering.
 
-  VkAttachmentDescription attachDesc = {
+  VkAttachmentDescription colorAttachDesc = {
       .flags = 0,
       .format = mSwapchainSurfaceFormat.format,
       .samples = VK_SAMPLE_COUNT_1_BIT,        // no multisampling
@@ -484,8 +497,26 @@ VkRenderPass VulkanCore::createSimpleRenderPass() {
                                           // transition to after the render pass
   };
 
-  VkAttachmentReference attachRef = {
+  VkAttachmentReference colorAttachRef = {
       .attachment = 0, .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+
+  VkFormat depthFormat =
+      mPhysicalDevice.getSelectedPhysicalDeviceProperties().mDepthFormat;
+
+  VkAttachmentDescription depthAttachmentDesc = {
+      .flags = 0,
+      .format = depthFormat,
+      .samples = VK_SAMPLE_COUNT_1_BIT,
+      .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+      .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+      .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+      .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+      .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+      .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
+
+  VkAttachmentReference depthAttachRef = {
+      .attachment = 1,
+      .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
 
   VkSubpassDescription subpassDesc = {
       .flags = 0,
@@ -494,22 +525,29 @@ VkRenderPass VulkanCore::createSimpleRenderPass() {
       .inputAttachmentCount = 0,           // shader read only attachments
       .pInputAttachments = nullptr,        //
       .colorAttachmentCount = 1,
-      .pColorAttachments = &attachRef,
+      .pColorAttachments = &colorAttachRef,
       .pResolveAttachments = nullptr,
-      .pDepthStencilAttachment = nullptr,
+      .pDepthStencilAttachment = mDepthEnabled ? &depthAttachRef : nullptr,
       .preserveAttachmentCount = 0,
       .pPreserveAttachments = nullptr};
+
+  std::vector<VkAttachmentDescription> attachments;
+  attachments.push_back(colorAttachDesc);
+
+  if (mDepthEnabled) {
+    attachments.push_back(depthAttachmentDesc);
+  }
 
   VkRenderPassCreateInfo renderPassCreateInfo = {
       .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
       .pNext = nullptr,
       .flags = 0,
-      .attachmentCount = 1,        // only one color attachment
-      .pAttachments = &attachDesc, // pointer to attachment description
-      .subpassCount = 1,           // only one subpass
-      .pSubpasses = &subpassDesc,  // pointer to subpass description
-      .dependencyCount = 0,        // no subpass dependencies
-      .pDependencies = nullptr     // no subpass dependencies
+      .attachmentCount = static_cast<uint32_t>(attachments.size()),
+      .pAttachments = attachments.data(), // pointer to attachment descriptions
+      .subpassCount = 1,                  // only one subpass
+      .pSubpasses = &subpassDesc,         // pointer to subpass description
+      .dependencyCount = 0,               // no subpass dependencies
+      .pDependencies = nullptr            // no subpass dependencies
   };
 
   VkRenderPass renderPass;
@@ -531,13 +569,19 @@ VulkanCore::createFrameBuffer(VkRenderPass renderPass) {
   glfwGetFramebufferSize(mWindow, &widnowWidth, &windowHeight);
 
   for (uint32_t i{0}; i < mSwapchainImages.size(); ++i) {
+    std::vector<VkImageView> attachments;
+    attachments.push_back(mSwapchainImageViews[i]);
+    if (mDepthEnabled) {
+      attachments.push_back(mDepthImages[i].mImageView);
+    }
+
     VkFramebufferCreateInfo framebufferCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
         .pNext = nullptr,
         .flags = 0,
         .renderPass = renderPass,
-        .attachmentCount = 1,
-        .pAttachments = &mSwapchainImageViews[i],
+        .attachmentCount = static_cast<uint32_t>(attachments.size()),
+        .pAttachments = attachments.data(),
         .width = static_cast<uint32_t>(widnowWidth),
         .height = static_cast<uint32_t>(windowHeight),
         .layers = 1};
@@ -939,6 +983,36 @@ void VulkanCore::copyBufferToImage(VkBuffer buffer, VkImage image,
                          &bufferImageCopy);
 
   submitCopyCommand();
+}
+
+void VulkanCore::createDepthResources() {
+  const int32_t numSwapChainImages =
+      static_cast<int32_t>(mSwapchainImages.size());
+  mDepthImages.resize(numSwapChainImages);
+
+  const auto &surfaceCaps =
+      mPhysicalDevice.getSelectedPhysicalDeviceProperties().mSurfaceCaps;
+  VkFormat depthFormat =
+      mPhysicalDevice.getSelectedPhysicalDeviceProperties().mDepthFormat;
+  for (int32_t i = 0; i < numSwapChainImages; ++i) {
+    // Create depth image
+    VkImageUsageFlagBits usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    VkMemoryPropertyFlagBits memProperties =
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    createImage(mDepthImages[i], surfaceCaps.currentExtent.width,
+                surfaceCaps.currentExtent.height, depthFormat, usage,
+                memProperties);
+
+    // Transition depth image layout
+    transitionImageLayout(mDepthImages[i].mImage, depthFormat,
+                          VK_IMAGE_LAYOUT_UNDEFINED,
+                          VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+
+    // Create depth image view
+    VkImageAspectFlags aspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT;
+    mDepthImages[i].mImageView = createImageView(
+        mLogicalDevice, mDepthImages[i].mImage, depthFormat, aspectFlags);
+  }
 }
 
 } // namespace VulkanCore

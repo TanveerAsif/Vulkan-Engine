@@ -12,7 +12,7 @@ GraphicsPipeline::GraphicsPipeline(
     VkShaderModule vs, VkShaderModule fs, const SimpleMesh *pMesh,
     int32_t numSwapchainImages,
     const std::vector<BufferAndMemory> &uniformBuffers,
-    size_t uniformBufferSize)
+    size_t uniformBufferSize, bool depthEnabled)
     : mDevice(device), mPipelineLayout(VK_NULL_HANDLE),
       mGraphicsPipeline(VK_NULL_HANDLE) {
 
@@ -77,6 +77,18 @@ GraphicsPipeline::GraphicsPipeline(
       .sampleShadingEnable = VK_FALSE,
       .minSampleShading = 1.0f};
 
+  VkPipelineDepthStencilStateCreateInfo depthStencilState = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+      .depthTestEnable = VK_TRUE,
+      .depthWriteEnable = VK_TRUE,
+      .depthCompareOp = VK_COMPARE_OP_LESS,
+      .depthBoundsTestEnable = VK_FALSE,
+      .stencilTestEnable = VK_FALSE,
+      .front = {},
+      .back = {},
+      .minDepthBounds = 0.0f,
+      .maxDepthBounds = 1.0f};
+
   VkPipelineColorBlendAttachmentState colorBlendAttachment = {
       .blendEnable = VK_FALSE,
       .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
@@ -113,6 +125,7 @@ GraphicsPipeline::GraphicsPipeline(
       .pViewportState = &viewportState,
       .pRasterizationState = &rasterizer,
       .pMultisampleState = &multisampling,
+      .pDepthStencilState = depthEnabled ? &depthStencilState : VK_NULL_HANDLE,
       .pColorBlendState = &colorBlending,
       .layout = mPipelineLayout,
       .renderPass = renderPass,

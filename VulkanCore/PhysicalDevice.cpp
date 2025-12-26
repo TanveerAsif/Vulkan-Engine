@@ -7,6 +7,34 @@
 
 #include "PhysicalDevice.h"
 
+namespace {
+VkFormat findDepthFormat(VkPhysicalDevice physicalDevice) {
+  std::vector<VkFormat> depthFormats = {VK_FORMAT_D32_SFLOAT,
+                                        VK_FORMAT_D32_SFLOAT_S8_UINT,
+                                        VK_FORMAT_D24_UNORM_S8_UINT};
+
+  // Check for each format if it is supported as a depth-stencil attachment
+  VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL;
+  VkFormatFeatureFlags features =
+      VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+  for (VkFormat format : depthFormats) {
+    VkFormatProperties props;
+    vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &props);
+
+    if (tiling == VK_IMAGE_TILING_LINEAR &&
+        (props.linearTilingFeatures & features) == features) {
+      return format;
+    } else if (tiling == VK_IMAGE_TILING_OPTIMAL &&
+               (props.optimalTilingFeatures & features) == features) {
+      return format;
+    }
+  }
+
+  throw std::runtime_error("Failed to find a supported depth format.");
+}
+
+} // namespace
+
 namespace VulkanCore {
  
 
@@ -87,6 +115,9 @@ namespace VulkanCore {
 
             // Get supported features : like geometry shader, tessellation shader, wide lines etc.,
             vkGetPhysicalDeviceFeatures(PhysDev, &mDevices[i].mFeatures);
+
+            // Find a suitable depth format
+            mDevices[i].mDepthFormat = findDepthFormat(PhysDev);
         }
 
         printPhysicalDeviceInfo();

@@ -17,6 +17,7 @@ namespace VulkanCore {
       VkSurfaceCapabilitiesKHR mSurfaceCaps;
       VkPhysicalDeviceMemoryProperties mMemoryProperties;
       VkPhysicalDeviceFeatures mFeatures;
+      VkFormat mDepthFormat;
     };
 
     class PhysicalDevice

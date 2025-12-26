@@ -15,7 +15,7 @@ namespace VulkanCore {
                            VkShaderModule fragShaderModule,
                            const SimpleMesh *mesh, int32_t numSwapchainImages,
                            const std::vector<BufferAndMemory> &uniformBuffers,
-                           size_t uniformBufferSize);
+                           size_t uniformBufferSize, bool depthEnabled);
           ~GraphicsPipeline();
           void bind(VkCommandBuffer commandBuffer, int32_t imageIndex);
 
