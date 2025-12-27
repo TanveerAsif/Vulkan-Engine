@@ -52,7 +52,7 @@ public:
   VulkanCore();
   ~VulkanCore();
 
-  void initialize(std::string appName, GLFWwindow *window);
+  void initialize(std::string appName, GLFWwindow *window, bool depthEnabled);
   int32_t getSwapchainImageCount() const;
   void createCommandBuffers(VkCommandBuffer *commandBuffers, int32_t count);
   void freeCommandBuffers(VkCommandBuffer *commandBuffers, int32_t count);
@@ -97,6 +97,7 @@ private:
   void submitCopyCommand();
   void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width,
                          uint32_t height);
+  void createDepthResources();
 
   VkInstance mVulkanInstance;
   VkDebugUtilsMessengerEXT mDebugMessenger;
@@ -123,6 +124,9 @@ private:
   std::vector<VkFramebuffer> mFrameBuffers;
 
   VkCommandBuffer mCopyCmdBuffer;
+
+  bool mDepthEnabled;
+  std::vector<VulkanTexture> mDepthImages;
 };
 
 } // namespace VulkanCore

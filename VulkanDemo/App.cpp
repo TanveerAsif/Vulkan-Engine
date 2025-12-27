@@ -2,6 +2,7 @@
 #include "Shader.h"
 #include "Wrapper.h"
 #include <GLFW/glfw3.h>
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <glm/ext/matrix_float4x4.hpp>
@@ -58,7 +59,7 @@ App::~App() {
 void App::init(std::string appName) {
   mWindow = VulkanCore::glfw_vulkan_init(mWindowWidth, mWindowHeight,
                                          appName.c_str());
-  mVulkanCore.initialize(appName, mWindow);
+  mVulkanCore.initialize(appName, mWindow, true /* enable depth buffer */);
   mNumImages = mVulkanCore.getSwapchainImageCount();
   mGraphicsQueue = mVulkanCore.getGraphicsQueue();
   mRenderPass = mVulkanCore.createSimpleRenderPass();
@@ -198,9 +199,10 @@ void App::createCommandBuffers() {
 }
 
 void App::recordCommandBuffer() {
-  VkClearColorValue clearColor = {{0.0F, 1.0F, 0.0F, 1.0F}};
-  VkClearValue clearValue = {};
-  clearValue.color = clearColor;
+
+  std::array<VkClearValue, 2> clearValue = {};
+  clearValue[0].color = {{0.0f, 1.0f, 0.0f, 1.0f}}; // green clear color
+  clearValue[1].depthStencil = {1.0f, 0};           // max depth
 
   VkRenderPassBeginInfo renderPassBeginInfo = {
       .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
@@ -213,8 +215,8 @@ void App::recordCommandBuffer() {
                              .width = 800,
                              .height = 600,
                          }},
-      .clearValueCount = 1,
-      .pClearValues = &clearValue};
+      .clearValueCount = static_cast<uint32_t>(clearValue.size()),
+      .pClearValues = clearValue.data()};
 
   for (uint32_t i = 0; i < mCommandBuffers.size(); ++i) {
     // Begin command buffer recording
@@ -227,7 +229,7 @@ void App::recordCommandBuffer() {
                          VK_SUBPASS_CONTENTS_INLINE);
     mGraphicsPipeline->bind(mCommandBuffers[i], i);
 
-    uint32_t vertexCount = 6;
+    uint32_t vertexCount = 9;
     uint32_t instanceCount = 1;
     uint32_t firstVertex = 0;
     uint32_t firstInstance = 0;
@@ -259,8 +261,8 @@ struct UniformData {
 void App::createPipeline() {
   mGraphicsPipeline = new VulkanCore::GraphicsPipeline(
       mVulkanCore.getDevice(), mWindow, mRenderPass, mVSShaderModule,
-      mFSShaderModule, &mMesh, mNumImages, mUniformBuffers,
-      sizeof(UniformData));
+      mFSShaderModule, &mMesh, mNumImages, mUniformBuffers, sizeof(UniformData),
+      true /* enable depth buffer */);
 }
 
 void App::createVertexBuffer() {
@@ -277,7 +279,11 @@ void App::createVertexBuffer() {
 
       {{-1.0F, -1.0F, 0.0F}, {0.0F, 0.0F}}, // bottom left
       {{1.0F, 1.0F, 0.0F}, {1.0F, 1.0F}},   // top right
-      {{1.0F, -1.0F, 0.0F}, {1.0F, 0.0F}}   // bottom right
+      {{1.0F, -1.0F, 0.0F}, {1.0F, 0.0F}},  // bottom right
+
+      {{-1.0F, -1.0F, 5.0F}, {0.0F, 0.0F}}, // bottom left
+      {{-1.0F, 1.0F, 5.0F}, {0.0F, 1.0F}},  // top left
+      {{1.0F, 1.0F, 5.0F}, {1.0F, 1.0F}},   // top right
   };
 
   mMesh.mVertexBufferSize = sizeof(Vertex) * vertices.size();
