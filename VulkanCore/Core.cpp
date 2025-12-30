@@ -1,4 +1,5 @@
 #include "Core.h"
+#include "Texture.h"
 #include <cstdint>
 #include <iostream>
 #include <string>
@@ -19,13 +20,13 @@
 namespace VulkanCore {
 
 VulkanCore::VulkanCore()
-    : mVulkanInstance(VK_NULL_HANDLE), mDebugMessenger(VK_NULL_HANDLE),
-      mWindow(nullptr),
+    : mVulkanInstance(VK_NULL_HANDLE), mDebugMessenger(VK_NULL_HANDLE), mWindow(nullptr),
       mSurface(VK_NULL_HANDLE), mPhysicalDevice{}, mQueueFamilyIndex{0},
       mLogicalDevice(VK_NULL_HANDLE), mSwapchainSurfaceFormat{},
       mSwapchain(VK_NULL_HANDLE), mSwapchainImages{}, mSwapchainImageViews{},
-      mCommandPool(VK_NULL_HANDLE), mGraphicsQueue{}, mFrameBuffers{},
-      mCopyCmdBuffer(VK_NULL_HANDLE) {}
+      mCommandPool(VK_NULL_HANDLE), mGraphicsQueue{}, mFrameBuffers{}, mCopyCmdBuffer(VK_NULL_HANDLE)
+{
+}
 
 VulkanCore::~VulkanCore() {
   std::cout << "........................................." << std::endl;
@@ -44,7 +45,7 @@ VulkanCore::~VulkanCore() {
 
   // Destroy depth resources
   for (auto &depthImage : mDepthImages) {
-    depthImage.Destroy(mLogicalDevice);
+      depthImage.destroy(mLogicalDevice);
   }
   mDepthImages.clear();
   std::cout << "Depth resources destroyed." << std::endl;
@@ -743,14 +744,16 @@ void VulkanCore::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer,
 }
 
 std::vector<BufferAndMemory> VulkanCore::createUniformBuffers(size_t size) {
-  std::vector<BufferAndMemory> uniformBuffers(mSwapchainImages.size());
-  for (int32_t i{0}; i < static_cast<int32_t>(mSwapchainImages.size()); ++i) {
-    VkBufferUsageFlags usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-    VkMemoryPropertyFlags memProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                                          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-    uniformBuffers[i] = createBuffer(size, usage, memProperties);
-  }
-  return uniformBuffers;
+    std::vector<BufferAndMemory> uniformBuffers(mSwapchainImages.size());
+
+    for (int32_t i{0}; i < static_cast<int32_t>(mSwapchainImages.size()); ++i)
+    {
+        VkBufferUsageFlags usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+        VkMemoryPropertyFlags memProperties =
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+        uniformBuffers[i] = createBuffer(size, usage, memProperties);
+    }
+    return uniformBuffers;
 }
 
 void BufferAndMemory::Destroy(VkDevice device) {
@@ -774,174 +777,155 @@ void BufferAndMemory::update(VkDevice device, const void *pData,
   }
 }
 
-void VulkanTexture::Destroy(VkDevice device) {
-  if (mSampler != VK_NULL_HANDLE) {
-    vkDestroySampler(device, mSampler, nullptr);
-    mSampler = VK_NULL_HANDLE;
-  }
-  if (mImageView != VK_NULL_HANDLE) {
-    vkDestroyImageView(device, mImageView, nullptr);
-    mImageView = VK_NULL_HANDLE;
-  }
-  if (mImage != VK_NULL_HANDLE) {
-    vkDestroyImage(device, mImage, nullptr);
-    mImage = VK_NULL_HANDLE;
-  }
-  if (mImageMemory != VK_NULL_HANDLE) {
-    vkFreeMemory(device, mImageMemory, nullptr);
-    mImageMemory = VK_NULL_HANDLE;
-  }
-  mWidth = 0;
-  mHeight = 0;
+// void VulkanTexture::Destroy(VkDevice device) {
+//   if (mSampler != VK_NULL_HANDLE) {
+//     vkDestroySampler(device, mSampler, nullptr);
+//     mSampler = VK_NULL_HANDLE;
+//   }
+//   if (mImageView != VK_NULL_HANDLE) {
+//     vkDestroyImageView(device, mImageView, nullptr);
+//     mImageView = VK_NULL_HANDLE;
+//   }
+//   if (mImage != VK_NULL_HANDLE) {
+//     vkDestroyImage(device, mImage, nullptr);
+//     mImage = VK_NULL_HANDLE;
+//   }
+//   if (mImageMemory != VK_NULL_HANDLE) {
+//     vkFreeMemory(device, mImageMemory, nullptr);
+//     mImageMemory = VK_NULL_HANDLE;
+//   }
+//   mWidth = 0;
+//   mHeight = 0;
+// }
+
+void VulkanCore::createTexture(std::string filePath, Texture& outTexture)
+{
+    // Step1 : Load image using stb_image
+    int texWidth, texHeight, texChannels;
+    stbi_uc* pixels = stbi_load(filePath.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+    if (!pixels)
+    {
+        throw std::runtime_error("Failed to load texture image: " + filePath);
+    }
+
+    std::cout << "Loaded texture: " << filePath << " (" << texWidth << "x" << texHeight
+              << ", original channels: " << texChannels << ")" << std::endl;
+
+    // Store dimensions
+    outTexture.mWidth = static_cast<uint32_t>(texWidth);
+    outTexture.mHeight = static_cast<uint32_t>(texHeight);
+
+    // Step2 : create the image object and allocate memory
+    // Note: STBI_rgb_alpha ensures pixels are always RGBA format regardless of
+    // original channels
+    VkFormat imageFormat = VK_FORMAT_R8G8B8A8_UNORM;
+    createTextureImageFromData(outTexture, pixels, texWidth, texHeight, imageFormat);
+
+    // Step3 : Free pixel data loaded by stb_image
+    stbi_image_free(pixels);
+
+    // Step4 : create Vulkan image view
+    VkImageAspectFlags aspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
+    outTexture.mImageView = createImageView(mLogicalDevice, outTexture.mImage, imageFormat, aspectFlags);
+
+    // Step5 : create texture sampler
+    VkFilter minFilter = VK_FILTER_LINEAR;
+    VkFilter magFilter = VK_FILTER_LINEAR;
+    VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    outTexture.mSampler = createTextureSampler(mLogicalDevice, minFilter, magFilter, addressMode);
+
+    std::cout << "Texture created successfully from file: " << filePath << std::endl;
 }
 
-void VulkanCore::createTexture(std::string filePath,
-                               VulkanTexture &outTexture) {
-  // Step1 : Load image using stb_image
-  int texWidth, texHeight, texChannels;
-  stbi_uc *pixels = stbi_load(filePath.c_str(), &texWidth, &texHeight,
-                              &texChannels, STBI_rgb_alpha);
-  if (!pixels) {
-    throw std::runtime_error("Failed to load texture image: " + filePath);
-  }
-
-  std::cout << "Loaded texture: " << filePath << " (" << texWidth << "x"
-            << texHeight << ", original channels: " << texChannels << ")"
-            << std::endl;
-
-  // Store dimensions
-  outTexture.mWidth = static_cast<uint32_t>(texWidth);
-  outTexture.mHeight = static_cast<uint32_t>(texHeight);
-
-  // Step2 : create the image object and allocate memory
-  // Note: STBI_rgb_alpha ensures pixels are always RGBA format regardless of
-  // original channels
-  VkFormat imageFormat = VK_FORMAT_R8G8B8A8_UNORM;
-  createTextureImageFromData(outTexture, pixels, texWidth, texHeight,
-                             imageFormat);
-
-  // Step3 : Free pixel data loaded by stb_image
-  stbi_image_free(pixels);
-
-  // Step4 : create Vulkan image view
-  VkImageAspectFlags aspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
-  outTexture.mImageView = createImageView(mLogicalDevice, outTexture.mImage,
-                                          imageFormat, aspectFlags);
-
-  // Step5 : create texture sampler
-  VkFilter minFilter = VK_FILTER_LINEAR;
-  VkFilter magFilter = VK_FILTER_LINEAR;
-  VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-  outTexture.mSampler =
-      createTextureSampler(mLogicalDevice, minFilter, magFilter, addressMode);
-
-  std::cout << "Texture created successfully from file: " << filePath
-            << std::endl;
+void VulkanCore::createTextureImageFromData(Texture& outTexture, const void* pixels, int texWidth, int texHeight,
+                                            VkFormat imageFormat)
+{
+    VkImageUsageFlags usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    VkMemoryPropertyFlags memProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    createImage(outTexture, texWidth, texHeight, imageFormat, usage, memProperties);
+    updateTextureImage(outTexture, texWidth, texHeight, imageFormat, pixels);
 }
 
-void VulkanCore::createTextureImageFromData(VulkanTexture &outTexture,
-                                            const void *pixels, int texWidth,
-                                            int texHeight,
-                                            VkFormat imageFormat) {
-  VkImageUsageFlags usage =
-      VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-  VkMemoryPropertyFlags memProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-  createImage(outTexture, texWidth, texHeight, imageFormat, usage,
-              memProperties);
-  updateTextureImage(outTexture, texWidth, texHeight, imageFormat, pixels);
+void VulkanCore::createImage(Texture& outTexture, uint32_t width, uint32_t height, VkFormat format,
+                             VkImageUsageFlags usage, VkMemoryPropertyFlags reqMemPropFlags)
+{
+    // Step 1: Create image
+    VkImageCreateInfo imageCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0,
+        .imageType = VK_IMAGE_TYPE_2D,
+        .format = format,
+        .extent = {.width = static_cast<uint32_t>(width), .height = static_cast<uint32_t>(height), .depth = 1},
+        .mipLevels = 1,
+        .arrayLayers = 1,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .tiling = VK_IMAGE_TILING_OPTIMAL,
+        .usage = usage,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        .queueFamilyIndexCount = 0,
+        .pQueueFamilyIndices = nullptr,
+        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED};
+
+    // Step1 : create image object
+    if (vkCreateImage(mLogicalDevice, &imageCreateInfo, nullptr, &outTexture.mImage) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Failed to create image!");
+    }
+
+    // Step2 : get memory requirements
+    VkMemoryRequirements memRequirements{};
+    vkGetImageMemoryRequirements(mLogicalDevice, outTexture.mImage, &memRequirements);
+
+    // Step3 : get memory type index
+    uint32_t memoryTypeIndex = getMemoryTypeIndex(memRequirements.memoryTypeBits, reqMemPropFlags);
+    std::cout << "Selected memory type index for image: " << memoryTypeIndex << std::endl;
+
+    // Step4 : allocate memory
+    VkMemoryAllocateInfo allocInfo = {.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+                                      .pNext = nullptr,
+                                      .allocationSize = memRequirements.size,
+                                      .memoryTypeIndex = memoryTypeIndex};
+    if (vkAllocateMemory(mLogicalDevice, &allocInfo, nullptr, &outTexture.mImageMemory) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Failed to allocate image memory!");
+    }
+
+    // Step5 : bind image and memory
+    if (vkBindImageMemory(mLogicalDevice, outTexture.mImage, outTexture.mImageMemory, 0) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Failed to bind image and memory!");
+    }
 }
 
-void VulkanCore::createImage(VulkanTexture &outTexture, uint32_t width,
-                             uint32_t height, VkFormat format,
-                             VkImageUsageFlags usage,
-                             VkMemoryPropertyFlags reqMemPropFlags) {
-  // Step 1: Create image
-  VkImageCreateInfo imageCreateInfo = {
-      .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-      .pNext = nullptr,
-      .flags = 0,
-      .imageType = VK_IMAGE_TYPE_2D,
-      .format = format,
-      .extent = {.width = static_cast<uint32_t>(width),
-                 .height = static_cast<uint32_t>(height),
-                 .depth = 1},
-      .mipLevels = 1,
-      .arrayLayers = 1,
-      .samples = VK_SAMPLE_COUNT_1_BIT,
-      .tiling = VK_IMAGE_TILING_OPTIMAL,
-      .usage = usage,
-      .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-      .queueFamilyIndexCount = 0,
-      .pQueueFamilyIndices = nullptr,
-      .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED};
+void VulkanCore::updateTextureImage(Texture& outTexture, uint32_t width, uint32_t height, VkFormat format,
+                                    const void* pixels)
+{
 
-  // Step1 : create image object
-  if (vkCreateImage(mLogicalDevice, &imageCreateInfo, nullptr,
-                    &outTexture.mImage) != VK_SUCCESS) {
-    throw std::runtime_error("Failed to create image!");
-  }
+    int32_t bytesPerPixel = 4; // Assuming 4 bytes per pixel (RGBA)
+    VkDeviceSize layerSize = width * height * bytesPerPixel;
+    VkDeviceSize imageSize = layerSize; // For single layer image
 
-  // Step2 : get memory requirements
-  VkMemoryRequirements memRequirements{};
-  vkGetImageMemoryRequirements(mLogicalDevice, outTexture.mImage,
-                               &memRequirements);
+    // Create staging buffer
+    BufferAndMemory stagingTexture =
+        createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-  // Step3 : get memory type index
-  uint32_t memoryTypeIndex =
-      getMemoryTypeIndex(memRequirements.memoryTypeBits, reqMemPropFlags);
-  std::cout << "Selected memory type index for image: " << memoryTypeIndex
-            << std::endl;
+    stagingTexture.update(mLogicalDevice, pixels, imageSize);
 
-  // Step4 : allocate memory
-  VkMemoryAllocateInfo allocInfo = {.sType =
-                                        VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-                                    .pNext = nullptr,
-                                    .allocationSize = memRequirements.size,
-                                    .memoryTypeIndex = memoryTypeIndex};
-  if (vkAllocateMemory(mLogicalDevice, &allocInfo, nullptr,
-                       &outTexture.mImageMemory) != VK_SUCCESS) {
-    throw std::runtime_error("Failed to allocate image memory!");
-  }
+    // Transition image layout to TRANSFER_DST_OPTIMAL
+    transitionImageLayout(outTexture.mImage, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-  // Step5 : bind image and memory
-  if (vkBindImageMemory(mLogicalDevice, outTexture.mImage,
-                        outTexture.mImageMemory, 0) != VK_SUCCESS) {
-    throw std::runtime_error("Failed to bind image and memory!");
-  }
-}
+    // Copy buffer to image
+    copyBufferToImage(stagingTexture.mBuffer, outTexture.mImage, static_cast<uint32_t>(width),
+                      static_cast<uint32_t>(height));
 
-void VulkanCore::updateTextureImage(VulkanTexture &outTexture, uint32_t width,
-                                    uint32_t height, VkFormat format,
-                                    const void *pixels) {
+    // Transition image layout to SHADER_READ_ONLY_OPTIMAL
+    transitionImageLayout(outTexture.mImage, format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-  int32_t bytesPerPixel = 4; // Assuming 4 bytes per pixel (RGBA)
-  VkDeviceSize layerSize = width * height * bytesPerPixel;
-  VkDeviceSize imageSize = layerSize; // For single layer image
-
-  // Create staging buffer
-  BufferAndMemory stagingTexture =
-      createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                       VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-  stagingTexture.update(mLogicalDevice, pixels, imageSize);
-
-  // Transition image layout to TRANSFER_DST_OPTIMAL
-  transitionImageLayout(outTexture.mImage, format, VK_IMAGE_LAYOUT_UNDEFINED,
-                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-
-  // Copy buffer to image
-  copyBufferToImage(stagingTexture.mBuffer, outTexture.mImage,
-                    static_cast<uint32_t>(width),
-                    static_cast<uint32_t>(height));
-
-  // Transition image layout to SHADER_READ_ONLY_OPTIMAL
-  transitionImageLayout(outTexture.mImage, format,
-                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-  // Clean up staging buffer
-  stagingTexture.Destroy(mLogicalDevice);
+    // Clean up staging buffer
+    stagingTexture.Destroy(mLogicalDevice);
 }
 
 void VulkanCore::transitionImageLayout(VkImage image, VkFormat format,

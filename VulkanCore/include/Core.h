@@ -17,6 +17,9 @@
 
 namespace VulkanCore {
 
+// Forward declaration
+class Texture;
+
 class BufferAndMemory {
 public:
   VkBuffer mBuffer;
@@ -30,27 +33,30 @@ public:
   void update(VkDevice device, const void *pData, VkDeviceSize size);
 };
 
-class VulkanTexture {
-public:
-  VkImage mImage;
-  VkDeviceMemory mImageMemory;
-  VkImageView mImageView;
-  VkSampler mSampler;
-  uint32_t mWidth;
-  uint32_t mHeight;
+// class VulkanTexture {
+// public:
+//   VkImage mImage;
+//   VkDeviceMemory mImageMemory;
+//   VkImageView mImageView;
+//   VkSampler mSampler;
+//   uint32_t mWidth;
+//   uint32_t mHeight;
 
-  VulkanTexture()
-      : mImage(VK_NULL_HANDLE), mImageMemory(VK_NULL_HANDLE),
-        mImageView(VK_NULL_HANDLE), mSampler(VK_NULL_HANDLE), mWidth(0),
-        mHeight(0) {}
+//   VulkanTexture()
+//       : mImage(VK_NULL_HANDLE), mImageMemory(VK_NULL_HANDLE),
+//         mImageView(VK_NULL_HANDLE), mSampler(VK_NULL_HANDLE), mWidth(0),
+//         mHeight(0) {}
 
-  void Destroy(VkDevice device);
-};
+//   void Destroy(VkDevice device);
+// };
 
 class VulkanCore {
 public:
   VulkanCore();
   ~VulkanCore();
+
+  // Friend class to allow Texture to access private methods
+  friend class Texture;
 
   void initialize(std::string appName, GLFWwindow *window, bool depthEnabled);
   int32_t getSwapchainImageCount() const;
@@ -68,7 +74,7 @@ public:
   BufferAndMemory createVertexBuffer(const void *pVertices, size_t size);
   std::vector<BufferAndMemory> createUniformBuffers(size_t size);
 
-  void createTexture(std::string filePath, VulkanTexture &outTexture);
+  void createTexture(std::string filePath, Texture& outTexture);
 
 private:
   void createInstance(std::string appName);
@@ -83,14 +89,11 @@ private:
                               VkMemoryPropertyFlags properties);
   void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
-  void createTextureImageFromData(VulkanTexture &outTexture, const void *pixels,
-                                  int texWidth, int texHeight,
+  void createTextureImageFromData(Texture& outTexture, const void* pixels, int texWidth, int texHeight,
                                   VkFormat imageFormat);
-  void createImage(VulkanTexture &outTexture, uint32_t width, uint32_t height,
-                   VkFormat format, VkImageUsageFlags usage,
+  void createImage(Texture& outTexture, uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage,
                    VkMemoryPropertyFlags memProperties);
-  void updateTextureImage(VulkanTexture &outTexture, uint32_t width,
-                          uint32_t height, VkFormat format, const void *pixels);
+  void updateTextureImage(Texture& outTexture, uint32_t width, uint32_t height, VkFormat format, const void* pixels);
 
   void transitionImageLayout(VkImage image, VkFormat format,
                              VkImageLayout oldLayout, VkImageLayout newLayout);
@@ -126,7 +129,7 @@ private:
   VkCommandBuffer mCopyCmdBuffer;
 
   bool mDepthEnabled;
-  std::vector<VulkanTexture> mDepthImages;
+  std::vector<Texture> mDepthImages;
 };
 
 } // namespace VulkanCore

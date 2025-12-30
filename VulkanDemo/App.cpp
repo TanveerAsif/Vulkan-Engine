@@ -1,6 +1,9 @@
 #include "App.h"
+
 #include "Shader.h"
+#include "Texture.h"
 #include "Wrapper.h"
+
 #include <GLFW/glfw3.h>
 #include <array>
 #include <cmath>
@@ -14,10 +17,11 @@
 namespace VulkanApp {
 
 App::App(int32_t width, int32_t height)
-    : mWindow{nullptr}, mVulkanCore{}, mGraphicsQueue{nullptr},
-      mGraphicsPipeline{nullptr}, mNumImages{0}, mCommandBuffers{},
-      mRenderPass{VK_NULL_HANDLE}, mFrameBuffers{}, mWindowWidth{width},
-      mWindowHeight{height}, mCamera{nullptr} {}
+    : mWindow{nullptr}, mVulkanCore{}, mGraphicsQueue{nullptr}, mGraphicsPipeline{nullptr}, mNumImages{0},
+      mCommandBuffers{}, mRenderPass{VK_NULL_HANDLE}, mFrameBuffers{}, mWindowWidth{width},
+      mWindowHeight{height}, mCamera{nullptr}, mGraphicsPipelineV2{nullptr}, mModel{nullptr}
+{
+}
 
 App::~App() {
   // 1. Command buffers will be freed when command pool is destroyed
@@ -218,6 +222,8 @@ void App::recordCommandBuffer() {
       .clearValueCount = static_cast<uint32_t>(clearValue.size()),
       .pClearValues = clearValue.data()};
 
+  mModel->createDescriptorSets(mGraphicsPipelineV2);
+
   for (uint32_t i = 0; i < mCommandBuffers.size(); ++i) {
     // Begin command buffer recording
     VulkanCore::BeginCommandBuffer(
@@ -227,7 +233,9 @@ void App::recordCommandBuffer() {
     renderPassBeginInfo.framebuffer = mFrameBuffers[i];
     vkCmdBeginRenderPass(mCommandBuffers[i], &renderPassBeginInfo,
                          VK_SUBPASS_CONTENTS_INLINE);
-    mGraphicsPipeline->bind(mCommandBuffers[i], i);
+    // mGraphicsPipeline->bind(mCommandBuffers[i], i);
+    mGraphicsPipelineV2->bind(mCommandBuffers[i]);
+    mModel->recordCommandBuffer(mCommandBuffers[i], mGraphicsPipelineV2, i);
 
     uint32_t vertexCount = 9;
     uint32_t instanceCount = 1;
@@ -303,8 +311,9 @@ void App::updateUniformBuffer(uint32_t currentImage) {
   time += 0.1f; // assuming 60 FPS for simplicity
 
   glm::mat4 wvp = mCamera->getVPMatrix() * rotate;
-  mUniformBuffers[currentImage].update(mVulkanCore.getDevice(), &wvp,
-                                       sizeof(wvp));
+  //   mUniformBuffers[currentImage].update(mVulkanCore.getDevice(), &wvp,
+  //                                        sizeof(wvp));
+  mModel->update(currentImage, wvp);
 }
 
 void App::defaultCreateCameraPers() {
@@ -321,13 +330,15 @@ void App::defaultCreateCameraPers() {
 }
 
 void App::createMesh() {
-  createVertexBuffer();
-  loadTexture();
+    // createVertexBuffer();
+    // loadTexture();
+
+    mModel = new VulkanCore::VulkanModel("VulkanDemo/assets/Spider/spider.obj", &mVulkanCore);
 }
 
 void App::loadTexture() {
-  mMesh.mTexture = new VulkanCore::VulkanTexture();
-  mVulkanCore.createTexture("VulkanDemo/assets/wall.jpg", *(mMesh.mTexture));
+    mMesh.mTexture = new VulkanCore::Texture();
+    mVulkanCore.createTexture("VulkanDemo/assets/wall.jpg", *(mMesh.mTexture));
 }
 
 } // namespace VulkanApp

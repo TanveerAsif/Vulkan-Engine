@@ -221,51 +221,53 @@ void GraphicsPipeline::createDescriptorPool(int32_t numSwapchainImages) {
   std::cout << "Descriptor pool created successfully." << std::endl;
 }
 
-void GraphicsPipeline::createDescriptorSetLayout(
-    const std::vector<BufferAndMemory> &uniformBuffers,
-    size_t uniformBufferSize, VulkanTexture *texture) {
-  std::vector<VkDescriptorSetLayoutBinding> layoutBindings;
+void GraphicsPipeline::createDescriptorSetLayout(const std::vector<BufferAndMemory>& uniformBuffers,
+                                                 size_t uniformBufferSize, Texture* texture)
+{
+    std::vector<VkDescriptorSetLayoutBinding> layoutBindings;
 
-  VkDescriptorSetLayoutBinding vertexShaderLayoutBinding_VB = {
-      .binding = 0,
-      .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-      .descriptorCount = 1,
-      .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-  };
-  layoutBindings.push_back(vertexShaderLayoutBinding_VB);
+    VkDescriptorSetLayoutBinding vertexShaderLayoutBinding_VB = {
+        .binding = 0,
+        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+    };
+    layoutBindings.push_back(vertexShaderLayoutBinding_VB);
 
-  VkDescriptorSetLayoutBinding uniformBufferLayoutBinding_UBO = {
-      .binding = 1,
-      .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-      .descriptorCount = 1,
-      .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-  };
+    VkDescriptorSetLayoutBinding uniformBufferLayoutBinding_UBO = {
+        .binding = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+    };
 
-  if (uniformBuffers.size() > 0) {
-    layoutBindings.push_back(uniformBufferLayoutBinding_UBO);
-  }
+    if (uniformBuffers.size() > 0)
+    {
+        layoutBindings.push_back(uniformBufferLayoutBinding_UBO);
+    }
 
-  VkDescriptorSetLayoutBinding fragmentShaderLayoutBinding_SAMPLER = {
-      .binding = 2,
-      .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-      .descriptorCount = 1,
-      .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-  };
-  if (texture != VK_NULL_HANDLE) {
-    layoutBindings.push_back(fragmentShaderLayoutBinding_SAMPLER);
-  }
+    VkDescriptorSetLayoutBinding fragmentShaderLayoutBinding_SAMPLER = {
+        .binding = 2,
+        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+    };
+    if (texture != VK_NULL_HANDLE)
+    {
+        layoutBindings.push_back(fragmentShaderLayoutBinding_SAMPLER);
+    }
 
-  VkDescriptorSetLayoutCreateInfo layoutInfo = {
-      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-      .bindingCount = static_cast<uint32_t>(layoutBindings.size()),
-      .pBindings = layoutBindings.data(),
-  };
+    VkDescriptorSetLayoutCreateInfo layoutInfo = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        .bindingCount = static_cast<uint32_t>(layoutBindings.size()),
+        .pBindings = layoutBindings.data(),
+    };
 
-  if (vkCreateDescriptorSetLayout(mDevice, &layoutInfo, nullptr,
-                                  &mDescriptorSetLayout) != VK_SUCCESS) {
-    throw std::runtime_error("Failed to create descriptor set layout.");
-  }
-  std::cout << "Descriptor set layout created successfully." << std::endl;
+    if (vkCreateDescriptorSetLayout(mDevice, &layoutInfo, nullptr, &mDescriptorSetLayout) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Failed to create descriptor set layout.");
+    }
+    std::cout << "Descriptor set layout created successfully." << std::endl;
 }
 
 void GraphicsPipeline::allocateDescriptorSets(int32_t numSwapchainImages) {

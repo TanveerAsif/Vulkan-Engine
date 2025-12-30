@@ -25,9 +25,8 @@ namespace VulkanCore {
               const std::vector<BufferAndMemory> &uniformBuffers,
               size_t uniformBufferSize);
           void createDescriptorPool(int32_t numSwapchainImages);
-          void createDescriptorSetLayout(
-              const std::vector<BufferAndMemory> &uniformBuffers,
-              size_t uniformBufferSize, VulkanTexture *texture);
+          void createDescriptorSetLayout(const std::vector<BufferAndMemory>& uniformBuffers, size_t uniformBufferSize,
+                                         Texture* texture);
           void allocateDescriptorSets(int32_t numSwapchainImages);
           void updateDescriptorSets(
               const SimpleMesh *mesh, int32_t numSwapchainImages,
