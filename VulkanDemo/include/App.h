@@ -48,7 +48,7 @@ class App : public VulkanCore::GLFWCallbacks {
     GLFWwindow* mWindow;
     VulkanCore::VulkanCore mVulkanCore;
     VulkanCore::VulkanQueue* mGraphicsQueue;
-    VulkanCore::GraphicsPipeline* mGraphicsPipeline;
+    // VulkanCore::GraphicsPipeline* mGraphicsPipeline;
     VulkanCore::SimpleMesh mMesh;
 
     int32_t mNumImages;

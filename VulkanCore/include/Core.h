@@ -75,6 +75,14 @@ public:
   std::vector<BufferAndMemory> createUniformBuffers(size_t size);
 
   void createTexture(std::string filePath, Texture& outTexture);
+  VkFormat getDepthFormat() const
+  {
+      return mPhysicalDevice.getSelectedPhysicalDeviceProperties().mDepthFormat;
+  }
+  VkFormat getSwapchainSurfaceFormat() const
+  {
+      return mSwapchainSurfaceFormat.format;
+  }
 
 private:
   void createInstance(std::string appName);

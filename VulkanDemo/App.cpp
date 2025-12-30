@@ -17,9 +17,9 @@
 namespace VulkanApp {
 
 App::App(int32_t width, int32_t height)
-    : mWindow{nullptr}, mVulkanCore{}, mGraphicsQueue{nullptr}, mGraphicsPipeline{nullptr}, mNumImages{0},
-      mCommandBuffers{}, mRenderPass{VK_NULL_HANDLE}, mFrameBuffers{}, mWindowWidth{width},
-      mWindowHeight{height}, mCamera{nullptr}, mGraphicsPipelineV2{nullptr}, mModel{nullptr}
+    : mWindow{nullptr}, mVulkanCore{}, mGraphicsQueue{nullptr},
+      /*mGraphicsPipeline{nullptr},*/ mNumImages{0}, mCommandBuffers{}, mRenderPass{VK_NULL_HANDLE}, mFrameBuffers{},
+      mWindowWidth{width}, mWindowHeight{height}, mCamera{nullptr}, mGraphicsPipelineV2{nullptr}, mModel{nullptr}
 {
 }
 
@@ -35,9 +35,14 @@ App::~App() {
   vkDestroyShaderModule(mVulkanCore.getDevice(), mFSShaderModule, nullptr);
 
   // 4. Destroy graphics pipeline
-  if (mGraphicsPipeline) {
-    delete mGraphicsPipeline;
-    mGraphicsPipeline = nullptr;
+  // if (mGraphicsPipeline) {
+  //   delete mGraphicsPipeline;
+  //   mGraphicsPipeline = nullptr;
+  // }
+  if (mGraphicsPipelineV2)
+  {
+      delete mGraphicsPipelineV2;
+      mGraphicsPipelineV2 = nullptr;
   }
 
   // 5. Destroy render pass
@@ -267,10 +272,16 @@ struct UniformData {
   glm::mat4 wvp;
 };
 void App::createPipeline() {
-  mGraphicsPipeline = new VulkanCore::GraphicsPipeline(
-      mVulkanCore.getDevice(), mWindow, mRenderPass, mVSShaderModule,
-      mFSShaderModule, &mMesh, mNumImages, mUniformBuffers, sizeof(UniformData),
-      true /* enable depth buffer */);
+    // mGraphicsPipeline = new VulkanCore::GraphicsPipeline(
+    //     mVulkanCore.getDevice(), mWindow, mRenderPass, mVSShaderModule,
+    //     mFSShaderModule, &mMesh, mNumImages, mUniformBuffers, sizeof(UniformData),
+    //     true /* enable depth buffer */);
+
+    VkFormat depthFormat = mVulkanCore.getDepthFormat();
+    VkFormat colorFormat = mVulkanCore.getSwapchainSurfaceFormat();
+    mGraphicsPipelineV2 =
+        new VulkanCore::GraphicsPipelineV2(mVulkanCore.getDevice(), mWindow, mRenderPass, mVSShaderModule,
+                                           mFSShaderModule, mNumImages, colorFormat, depthFormat);
 }
 
 void App::createVertexBuffer() {
