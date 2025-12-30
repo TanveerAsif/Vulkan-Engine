@@ -54,6 +54,7 @@ void VulkanModel::updateAlignedMeshesArray()
 void VulkanModel::createBuffers(std::vector<Vertex>& vertices)
 {
     size_t numSubMeshes = m_Meshes.size();
+    // std::cout << "Creating buffers for " << numSubMeshes << " submeshes" << std::endl;
 
     // Calculate total sizes : last buffer = offset + range
     size_t vertexBufferSize =
@@ -71,6 +72,9 @@ void VulkanModel::createBuffers(std::vector<Vertex>& vertices)
 
     for (size_t meshIndex = 0; meshIndex < numSubMeshes; meshIndex++)
     {
+        // std::cout << "Mesh " << meshIndex << ": " << m_Meshes[meshIndex].NumVertices << " verts, "
+        //           << m_Meshes[meshIndex].NumIndices << " indices" << std::endl;
+
         // Copy vertices
         size_t srcOffset = m_Meshes[meshIndex].BaseVertex * mVertexSize;
         char* pSrc = pSrcVertices + srcOffset;
@@ -84,6 +88,10 @@ void VulkanModel::createBuffers(std::vector<Vertex>& vertices)
         pDst = pAlignedIndices + mAlignedMeshes[meshIndex].IndexBufferOffset;
         copySize = mAlignedMeshes[meshIndex].IndexBufferRange;
         memcpy(pDst, pSrc, copySize);
+
+        // // Debug: Print first few indices to verify they're mesh-relative
+        // uint32_t* pIndices = (uint32_t*)(pSrcIndices + m_Meshes[meshIndex].BaseIndex * sizeof(uint32_t));
+        // std::cout << "  First 3 indices: " << pIndices[0] << ", " << pIndices[1] << ", " << pIndices[2] << std::endl;
     }
 
     mVertexBuffer = mVulkanCore->createVertexBuffer(pAlignedVertices, vertexBufferSize);
@@ -198,11 +206,11 @@ void VulkanModel::recordCommandBuffer(VkCommandBuffer commandBuffer, GraphicsPip
                                 0,        // dynamicOffsetCount
                                 nullptr); // pDynamicOffsets
 
-        // Draw using vertex count = index count, starting from BaseIndex
-        uint32_t vertexCount = m_Meshes[submeshIndex].NumIndices;
-        uint32_t firstVertex = m_Meshes[submeshIndex].BaseIndex;
+        // Draw using index count with manual index buffer reading in shader
+        uint32_t indexCount = m_Meshes[submeshIndex].NumIndices;
+        uint32_t firstIndex = 0; // Always 0 since we bind with offset in descriptor
         uint32_t firstInstance = 0;
-        vkCmdDraw(commandBuffer, vertexCount, instanceCount, firstVertex, firstInstance);
+        vkCmdDraw(commandBuffer, indexCount, instanceCount, firstIndex, firstInstance);
     }
 }
 

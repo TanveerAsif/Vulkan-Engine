@@ -62,7 +62,7 @@ class Model
         glm::vec3 normal;
         glm::vec3 tangent;
         glm::vec3 bitangent;
-        glm::vec4 color;
+        // Removed color field to match shader VertexData structure (56 bytes)
     };
 
     struct SkinnedVertex
@@ -119,6 +119,9 @@ class Model
         //           << mesh->mNumFaces << " faces "
         //           << " name " << mesh->mName.C_Str() << std::endl;
         VertexType vertex;
+        uint32_t vertexBase = m_Meshes[meshIndex].BaseVertex;
+        uint32_t indexBase = m_Meshes[meshIndex].BaseIndex;
+
         // Process vertices
         for (unsigned int i = 0; i < mesh->mNumVertices; i++)
         {
@@ -158,16 +161,18 @@ class Model
                 vertex.bitangent = glm::vec3(0.0f, 0.0f, 0.0f);
             }
 
-            vertices[i] = vertex;
+            vertices[vertexBase + i] = vertex;
         }
 
-        // Process indices
+        // Process indices - write to correct offset, don't use push_back
+        uint32_t indexOffset = 0;
         for (uint32_t i = 0; i < mesh->mNumFaces; i++)
         {
-            aiFace face = mesh->mFaces[i];
+            const aiFace& face = mesh->mFaces[i];
             for (uint32_t j = 0; j < face.mNumIndices; j++)
             {
-                m_Indices.push_back(face.mIndices[j]);
+                m_Indices[indexBase + indexOffset] = face.mIndices[j];
+                indexOffset++;
             }
         }
 
