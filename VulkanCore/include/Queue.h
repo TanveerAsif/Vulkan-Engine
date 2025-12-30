@@ -4,13 +4,12 @@
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 
-
 namespace VulkanCore
 {
 
 class VulkanQueue
 {
-public:
+  public:
     VulkanQueue();
     ~VulkanQueue();
 
@@ -26,22 +25,25 @@ public:
     // Hang until queue finishes all commands buffers insided
     void waitIdle();
 
-    VkQueue getVkQueue() const { return mQueue; }
+    VkQueue getVkQueue() const
+    {
+        return mQueue;
+    }
 
-private:
+  private:
     void createSyncObjects();
 
     VkDevice mDevice;
     VkQueue mQueue;
     VkSwapchainKHR mSwapchain;
 
-    std::vector<VkSemaphore> mRenderCompleteSemaphores;  // Signals when rendering is complete
-    std::vector<VkSemaphore> mImageAvailableSemaphores;  // Signals when an image is available for rendering
-    std::vector<VkFence>     mInFlightFences;            // Fences to ensure that command buffers have finished executing
+    std::vector<VkSemaphore> mRenderCompleteSemaphores; // Signals when rendering is complete
+    std::vector<VkSemaphore> mImageAvailableSemaphores; // Signals when an image is available for rendering
+    std::vector<VkFence> mInFlightFences;               // Fences to ensure that command buffers have finished executing
 
-    uint32_t mNumberOfSwapchainImages;      // Number of images in the swapchain
-    uint32_t mAcquiredImageIndex;           // Index of the last acquired swapchain image
-    uint32_t mFrameIndex;                   // Index of the current frame
+    uint32_t mNumberOfSwapchainImages; // Number of images in the swapchain
+    uint32_t mAcquiredImageIndex;      // Index of the last acquired swapchain image
+    uint32_t mFrameIndex;              // Index of the current frame
 };
 
 } // namespace VulkanCore

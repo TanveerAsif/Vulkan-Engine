@@ -1,20 +1,18 @@
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 
+namespace VulkanCore
+{
 
-namespace VulkanCore {
+void BeginCommandBuffer(VkCommandBuffer commandBuffer, VkCommandBufferUsageFlags usageFlags);
 
-    void BeginCommandBuffer(VkCommandBuffer commandBuffer, VkCommandBufferUsageFlags usageFlags);
+VkSemaphore CreateSemaphore(VkDevice Device);
 
-    VkSemaphore CreateSemaphore(VkDevice Device);
+void imageMemBarrier(VkCommandBuffer CmdBuf, VkImage Image, VkFormat Format, VkImageLayout OldLayout,
+                     VkImageLayout NewLayout);
 
-    void imageMemBarrier(VkCommandBuffer CmdBuf, VkImage Image, VkFormat Format,
-                         VkImageLayout OldLayout, VkImageLayout NewLayout);
+VkImageView createImageView(VkDevice Device, VkImage Image, VkFormat Format, VkImageAspectFlags AspectFlags);
 
-    VkImageView createImageView(VkDevice Device, VkImage Image, VkFormat Format,
-                                VkImageAspectFlags AspectFlags);
-
-    VkSampler createTextureSampler(VkDevice Device, VkFilter MinFilter,
-                                   VkFilter MagFilter,
-                                   VkSamplerAddressMode AddressMode);
-}
+VkSampler createTextureSampler(VkDevice Device, VkFilter MinFilter, VkFilter MagFilter,
+                               VkSamplerAddressMode AddressMode);
+} // namespace VulkanCore

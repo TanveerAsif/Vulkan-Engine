@@ -17,9 +17,11 @@
 #include "SimpleMesh.h"
 #include "VulkanModel.h"
 
-namespace VulkanApp {
+namespace VulkanApp
+{
 
-class App : public VulkanCore::GLFWCallbacks {
+class App : public VulkanCore::GLFWCallbacks
+{
   public:
     App(int32_t width, int32_t height);
     ~App();

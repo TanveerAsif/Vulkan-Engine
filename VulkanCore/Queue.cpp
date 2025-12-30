@@ -1,22 +1,16 @@
 #include "Queue.h"
+#include "Wrapper.h"
 #include <cassert>
 #include <iostream>
 #include <vulkan/vulkan_core.h>
-#include "Wrapper.h"
 
 namespace VulkanCore
 {
 
 VulkanQueue::VulkanQueue()
-    : mDevice{VK_NULL_HANDLE}
-    , mQueue{VK_NULL_HANDLE}
-    , mSwapchain{VK_NULL_HANDLE}
-    , mRenderCompleteSemaphores{}
-    , mImageAvailableSemaphores{}
-    , mInFlightFences{}
-    , mNumberOfSwapchainImages{0}
-    , mAcquiredImageIndex{0}
-    , mFrameIndex{0}
+    : mDevice{VK_NULL_HANDLE}, mQueue{VK_NULL_HANDLE}, mSwapchain{VK_NULL_HANDLE}, mRenderCompleteSemaphores{},
+      mImageAvailableSemaphores{}, mInFlightFences{}, mNumberOfSwapchainImages{0}, mAcquiredImageIndex{0}, mFrameIndex{
+                                                                                                               0}
 {
 }
 
@@ -35,9 +29,9 @@ void VulkanQueue::init(VkDevice device, VkSwapchainKHR swapchain, uint32_t queue
 
     // Queue doesn't need to be created, just fetch from device
     vkGetDeviceQueue(mDevice, queueFamilyIndex, queueIndex, &mQueue);
-    std::cout<<"VulkanQueue::init - Queue initialized successfully."<<std::endl;
+    std::cout << "VulkanQueue::init - Queue initialized successfully." << std::endl;
 
-    if(vkGetSwapchainImagesKHR(mDevice, mSwapchain, &mNumberOfSwapchainImages, nullptr) != VK_SUCCESS)
+    if (vkGetSwapchainImagesKHR(mDevice, mSwapchain, &mNumberOfSwapchainImages, nullptr) != VK_SUCCESS)
     {
         throw std::runtime_error("Failed to get number of swapchain images.");
     }
@@ -45,19 +39,18 @@ void VulkanQueue::init(VkDevice device, VkSwapchainKHR swapchain, uint32_t queue
     createSyncObjects();
 }
 
-
 void VulkanQueue::createSyncObjects()
 {
     mRenderCompleteSemaphores.resize(mNumberOfSwapchainImages);
     mImageAvailableSemaphores.resize(mNumberOfSwapchainImages);
     mInFlightFences.resize(mNumberOfSwapchainImages);
 
-    for(VkSemaphore& Sem : mImageAvailableSemaphores)
+    for (VkSemaphore& Sem : mImageAvailableSemaphores)
     {
         Sem = CreateSemaphore(mDevice);
     }
 
-    for(VkSemaphore& Sem : mRenderCompleteSemaphores)
+    for (VkSemaphore& Sem : mRenderCompleteSemaphores)
     {
         Sem = CreateSemaphore(mDevice);
     }
@@ -65,10 +58,10 @@ void VulkanQueue::createSyncObjects()
     VkFenceCreateInfo fenceCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
         .pNext = nullptr,
-        .flags = VK_FENCE_CREATE_SIGNALED_BIT  // Start signaled so that the first frame can be submitted without waiting
+        .flags = VK_FENCE_CREATE_SIGNALED_BIT // Start signaled so that the first frame can be submitted without waiting
     };
 
-    for(VkFence& Fence : mInFlightFences)
+    for (VkFence& Fence : mInFlightFences)
     {
         if (vkCreateFence(mDevice, &fenceCreateInfo, nullptr, &Fence) != VK_SUCCESS)
         {
@@ -79,17 +72,20 @@ void VulkanQueue::createSyncObjects()
 
 void VulkanQueue::destroySemaphores()
 {
-    for (VkSemaphore& Sem : mImageAvailableSemaphores) {
+    for (VkSemaphore& Sem : mImageAvailableSemaphores)
+    {
         waitIdle();
-		vkDestroySemaphore(mDevice, Sem, nullptr);
-	}
+        vkDestroySemaphore(mDevice, Sem, nullptr);
+    }
 
-	for (VkSemaphore& Sem : mRenderCompleteSemaphores) {
+    for (VkSemaphore& Sem : mRenderCompleteSemaphores)
+    {
         waitIdle();
-		vkDestroySemaphore(mDevice, Sem, nullptr);
-	}
+        vkDestroySemaphore(mDevice, Sem, nullptr);
+    }
 
-    for(VkFence& Fence : mInFlightFences) {
+    for (VkFence& Fence : mInFlightFences)
+    {
         vkWaitForFences(mDevice, 1, &Fence, VK_TRUE, UINT64_MAX);
         vkDestroyFence(mDevice, Fence, nullptr);
     }
@@ -104,14 +100,10 @@ uint32_t VulkanQueue::acquireNextImage()
     vkWaitForFences(mDevice, 1, &mInFlightFences[mFrameIndex], VK_TRUE, UINT64_MAX);
     vkResetFences(mDevice, 1, &mInFlightFences[mFrameIndex]);
 
-    VkResult result = vkAcquireNextImageKHR(
-        mDevice,
-        mSwapchain,
-        UINT64_MAX,  // timeout, waiting indefinitely
-        mImageAvailableSemaphores[mFrameIndex],
-        VK_NULL_HANDLE,
-        &mAcquiredImageIndex
-    );
+    VkResult result =
+        vkAcquireNextImageKHR(mDevice, mSwapchain,
+                              UINT64_MAX, // timeout, waiting indefinitely
+                              mImageAvailableSemaphores[mFrameIndex], VK_NULL_HANDLE, &mAcquiredImageIndex);
 
     if (result != VK_SUCCESS)
     {
@@ -121,12 +113,10 @@ uint32_t VulkanQueue::acquireNextImage()
     return mAcquiredImageIndex;
 }
 
-
 void VulkanQueue::waitIdle()
 {
     vkQueueWaitIdle(mQueue);
 }
-
 
 void VulkanQueue::submitSync(VkCommandBuffer commandBuffer)
 {
@@ -134,12 +124,12 @@ void VulkanQueue::submitSync(VkCommandBuffer commandBuffer)
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
         .pNext = nullptr,
         .waitSemaphoreCount = 0,
-        .pWaitSemaphores = nullptr,  // No wait semaphores
+        .pWaitSemaphores = nullptr,   // No wait semaphores
         .pWaitDstStageMask = nullptr, // No wait stages
         .commandBufferCount = 1,
         .pCommandBuffers = &commandBuffer,
         .signalSemaphoreCount = 0,
-        .pSignalSemaphores = nullptr   // No signal semaphores
+        .pSignalSemaphores = nullptr // No signal semaphores
     };
 
     if (vkQueueSubmit(mQueue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS)
@@ -149,7 +139,6 @@ void VulkanQueue::submitSync(VkCommandBuffer commandBuffer)
 
     waitIdle();
 }
-
 
 void VulkanQueue::submitAsync(VkCommandBuffer commandBuffer)
 {
@@ -163,24 +152,22 @@ void VulkanQueue::submitAsync(VkCommandBuffer* commandBuffer, uint32_t numOfComm
     // before it begins execution.
     VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 
-    VkSubmitInfo submitInfo = {
-        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-        .pNext = nullptr,
-        .waitSemaphoreCount = 1,
-        .pWaitSemaphores = &mImageAvailableSemaphores[mFrameIndex], // Wait until image is available
-        .pWaitDstStageMask = waitStages,
-        .commandBufferCount = numOfCommandBuffers,
-        .pCommandBuffers = commandBuffer,
-        .signalSemaphoreCount = 1,
-        .pSignalSemaphores = &mRenderCompleteSemaphores[mAcquiredImageIndex]
-    };
+    VkSubmitInfo submitInfo = {.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+                               .pNext = nullptr,
+                               .waitSemaphoreCount = 1,
+                               .pWaitSemaphores =
+                                   &mImageAvailableSemaphores[mFrameIndex], // Wait until image is available
+                               .pWaitDstStageMask = waitStages,
+                               .commandBufferCount = numOfCommandBuffers,
+                               .pCommandBuffers = commandBuffer,
+                               .signalSemaphoreCount = 1,
+                               .pSignalSemaphores = &mRenderCompleteSemaphores[mAcquiredImageIndex]};
 
     if (vkQueueSubmit(mQueue, 1, &submitInfo, mInFlightFences[mFrameIndex]) != VK_SUCCESS)
     {
         throw std::runtime_error("Failed to submit command buffer to queue.");
     }
 }
-
 
 void VulkanQueue::presentImage(uint32_t imageIndex)
 {
@@ -194,8 +181,7 @@ void VulkanQueue::presentImage(uint32_t imageIndex)
         .swapchainCount = 1,
         .pSwapchains = &mSwapchain,
         .pImageIndices = &imageIndex,
-        .pResults = nullptr
-    };
+        .pResults = nullptr};
 
     VkResult result = vkQueuePresentKHR(mQueue, &presentInfo);
     if (result != VK_SUCCESS)
