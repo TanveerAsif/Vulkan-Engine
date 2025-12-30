@@ -44,7 +44,7 @@ class Model
     {
         for (CoreMaterial& material : m_Materials)
         {
-            for (Texture* texture : material.mpTextures)
+            for (Texture*& texture : material.mpTextures) // Use reference to modify the actual pointer
             {
                 if (texture)
                 {

@@ -777,27 +777,6 @@ void BufferAndMemory::update(VkDevice device, const void *pData,
   }
 }
 
-// void VulkanTexture::Destroy(VkDevice device) {
-//   if (mSampler != VK_NULL_HANDLE) {
-//     vkDestroySampler(device, mSampler, nullptr);
-//     mSampler = VK_NULL_HANDLE;
-//   }
-//   if (mImageView != VK_NULL_HANDLE) {
-//     vkDestroyImageView(device, mImageView, nullptr);
-//     mImageView = VK_NULL_HANDLE;
-//   }
-//   if (mImage != VK_NULL_HANDLE) {
-//     vkDestroyImage(device, mImage, nullptr);
-//     mImage = VK_NULL_HANDLE;
-//   }
-//   if (mImageMemory != VK_NULL_HANDLE) {
-//     vkFreeMemory(device, mImageMemory, nullptr);
-//     mImageMemory = VK_NULL_HANDLE;
-//   }
-//   mWidth = 0;
-//   mHeight = 0;
-// }
-
 void VulkanCore::createTexture(std::string filePath, Texture& outTexture)
 {
     // Step1 : Load image using stb_image

@@ -77,6 +77,9 @@ void VulkanModel::updateModelDesc(ModelDesc& desc)
     desc.mRanges.resize(m_Meshes.size());
     desc.mMaterials.resize(m_Meshes.size());
 
+    // Alignment requirement for storage buffers
+    constexpr size_t storageBufferAlignment = 16;
+
     int32_t numSubmeshes = static_cast<int32_t>(m_Meshes.size());
     for (int32_t meshIndex = 0; meshIndex < numSubmeshes; meshIndex++)
     {
@@ -96,11 +99,15 @@ void VulkanModel::updateModelDesc(ModelDesc& desc)
             throw std::runtime_error("Invalid material index in VulkanModel::updateModelDesc");
         }
 
+        // VB offset - align to storage buffer alignment
         size_t offset = m_Meshes[meshIndex].BaseVertex * mVertexSize;
+        offset = (offset + storageBufferAlignment - 1) & ~(storageBufferAlignment - 1); // Round up to alignment
         size_t range = m_Meshes[meshIndex].NumVertices * mVertexSize;
         desc.mRanges[meshIndex].mVbRange = RangeDesc{.mOffset = offset, .mRange = range};
 
+        // IB offset - align to storage buffer alignment
         offset = m_Meshes[meshIndex].BaseIndex * sizeof(uint32_t);
+        offset = (offset + storageBufferAlignment - 1) & ~(storageBufferAlignment - 1); // Round up to alignment
         range = m_Meshes[meshIndex].NumIndices * sizeof(uint32_t);
         desc.mRanges[meshIndex].mIbRange = RangeDesc{.mOffset = offset, .mRange = range};
 

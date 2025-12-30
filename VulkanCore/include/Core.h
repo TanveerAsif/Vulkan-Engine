@@ -33,23 +33,6 @@ public:
   void update(VkDevice device, const void *pData, VkDeviceSize size);
 };
 
-// class VulkanTexture {
-// public:
-//   VkImage mImage;
-//   VkDeviceMemory mImageMemory;
-//   VkImageView mImageView;
-//   VkSampler mSampler;
-//   uint32_t mWidth;
-//   uint32_t mHeight;
-
-//   VulkanTexture()
-//       : mImage(VK_NULL_HANDLE), mImageMemory(VK_NULL_HANDLE),
-//         mImageView(VK_NULL_HANDLE), mSampler(VK_NULL_HANDLE), mWidth(0),
-//         mHeight(0) {}
-
-//   void Destroy(VkDevice device);
-// };
-
 class VulkanCore {
 public:
   VulkanCore();

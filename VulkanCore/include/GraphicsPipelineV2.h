@@ -45,7 +45,7 @@ class GraphicsPipelineV2
 
     void allocateDescriptorSetsInternal(int32_t numSubmeshes,
                                         std::vector<std::vector<VkDescriptorSet>>& descriptorSets);
-    void createDescriptorSetLayout(bool isVB, bool isIB, bool isTex2D, bool isUniform, bool isCubemap);
+    void createDescriptorSetLayout(bool isVB, bool isIB, bool isUniform, bool isTex2D, bool isCubemap);
     void createDescriptorPool(int32_t maxSets);
 
     VkDevice mDevice;

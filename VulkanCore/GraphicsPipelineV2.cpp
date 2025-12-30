@@ -13,7 +13,7 @@ GraphicsPipelineV2::GraphicsPipelineV2(VkDevice device, GLFWwindow* window, VkRe
     : mDevice(device), mGraphicsPipeline(VK_NULL_HANDLE), mPipelineLayout(VK_NULL_HANDLE),
       mDescriptorPool(VK_NULL_HANDLE), mDescriptorSetLayout(VK_NULL_HANDLE), mNumImages(numImages)
 {
-    createDescriptorSetLayout(true, true, true, true, false);
+    createDescriptorSetLayout(true, true, true, true, false); // VB, IB, Uniform, Tex2D, Cubemap
     initCommon(window, renderPass, vsModule, fsModule, numImages, colorFormat, depthFormat, VK_COMPARE_OP_LESS);
 }
 
@@ -41,15 +41,15 @@ void GraphicsPipelineV2::updateDescriptorSets(const ModelDesc& modelDesc,
                                               std::vector<std::vector<VkDescriptorSet>>& descriptorSets)
 {
     int32_t numSubmeshes = static_cast<int32_t>(descriptorSets[0].size());
-    int32_t numBindings = 4; // VB, IB, Uniform, Tex2D
 
-    std::vector<VkWriteDescriptorSet> writeDescriptorSets(mNumImages * numSubmeshes * numBindings);
+    std::vector<VkWriteDescriptorSet> writeDescriptorSets;
     std::vector<VkDescriptorBufferInfo> BufferInfo_VBs(numSubmeshes);
     std::vector<VkDescriptorBufferInfo> BufferInfo_IBs(numSubmeshes);
     std::vector<std::vector<VkDescriptorBufferInfo>> BufferInfo_Uniforms(mNumImages);
     std::vector<VkDescriptorImageInfo> ImageInfo(numSubmeshes);
 
-    for (int32_t submeshIndex = 0; submeshIndex < mNumImages; submeshIndex++)
+    // Prepare buffer and image infos
+    for (int32_t submeshIndex = 0; submeshIndex < numSubmeshes; submeshIndex++)
     {
         BufferInfo_VBs[submeshIndex].buffer = modelDesc.mVertexBuffer;
         BufferInfo_VBs[submeshIndex].offset = modelDesc.mRanges[submeshIndex].mVbRange.mOffset;
@@ -64,7 +64,7 @@ void GraphicsPipelineV2::updateDescriptorSets(const ModelDesc& modelDesc,
         ImageInfo[submeshIndex].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     }
 
-    int32_t writeDescIndex = 0;
+    // Create descriptor writes only for valid resources
     for (int32_t imageIndex{0}; imageIndex < mNumImages; ++imageIndex)
     {
         BufferInfo_Uniforms[imageIndex].resize(numSubmeshes);
@@ -75,57 +75,70 @@ void GraphicsPipelineV2::updateDescriptorSets(const ModelDesc& modelDesc,
                 modelDesc.mRanges[submeshIndex].mUniformRange.mOffset;
             BufferInfo_Uniforms[imageIndex][submeshIndex].range = modelDesc.mRanges[submeshIndex].mUniformRange.mRange;
 
-            // VB
-            writeDescriptorSets[writeDescIndex] = {
-                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                .dstSet = descriptorSets[imageIndex][submeshIndex],
-                .dstBinding = V2_BindingVB,
-                .dstArrayElement = 0,
-                .descriptorCount = 1,
-                .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                .pBufferInfo = &BufferInfo_VBs[submeshIndex],
-            };
-            writeDescIndex++;
+            // VB - always valid
+            if (BufferInfo_VBs[submeshIndex].buffer != VK_NULL_HANDLE)
+            {
+                writeDescriptorSets.push_back({
+                    .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                    .dstSet = descriptorSets[imageIndex][submeshIndex],
+                    .dstBinding = V2_BindingVB,
+                    .dstArrayElement = 0,
+                    .descriptorCount = 1,
+                    .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                    .pBufferInfo = &BufferInfo_VBs[submeshIndex],
+                });
+            }
 
-            // IB
-            writeDescriptorSets[writeDescIndex] = {
-                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                .dstSet = descriptorSets[imageIndex][submeshIndex],
-                .dstBinding = V2_BindingIB,
-                .dstArrayElement = 0,
-                .descriptorCount = 1,
-                .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                .pBufferInfo = &BufferInfo_IBs[submeshIndex],
-            };
-            writeDescIndex++;
+            // IB - always valid
+            if (BufferInfo_IBs[submeshIndex].buffer != VK_NULL_HANDLE)
+            {
+                writeDescriptorSets.push_back({
+                    .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                    .dstSet = descriptorSets[imageIndex][submeshIndex],
+                    .dstBinding = V2_BindingIB,
+                    .dstArrayElement = 0,
+                    .descriptorCount = 1,
+                    .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                    .pBufferInfo = &BufferInfo_IBs[submeshIndex],
+                });
+            }
 
-            // Uniform
-            writeDescriptorSets[writeDescIndex] = {
-                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                .dstSet = descriptorSets[imageIndex][submeshIndex],
-                .dstBinding = V2_BindingUniform,
-                .dstArrayElement = 0,
-                .descriptorCount = 1,
-                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                .pBufferInfo = &BufferInfo_Uniforms[imageIndex][submeshIndex],
-            };
-            writeDescIndex++;
+            // Uniform - always valid
+            if (BufferInfo_Uniforms[imageIndex][submeshIndex].buffer != VK_NULL_HANDLE)
+            {
+                writeDescriptorSets.push_back({
+                    .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                    .dstSet = descriptorSets[imageIndex][submeshIndex],
+                    .dstBinding = V2_BindingUniform,
+                    .dstArrayElement = 0,
+                    .descriptorCount = 1,
+                    .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                    .pBufferInfo = &BufferInfo_Uniforms[imageIndex][submeshIndex],
+                });
+            }
 
-            // Tex2D
-            writeDescriptorSets[writeDescIndex] = {
-                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                .dstSet = descriptorSets[imageIndex][submeshIndex],
-                .dstBinding = V2_BindingTexture2D,
-                .dstArrayElement = 0,
-                .descriptorCount = 1,
-                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                .pImageInfo = &ImageInfo[submeshIndex],
-            };
+            // Tex2D - only if texture exists
+            if (ImageInfo[submeshIndex].imageView != VK_NULL_HANDLE &&
+                ImageInfo[submeshIndex].sampler != VK_NULL_HANDLE)
+            {
+                writeDescriptorSets.push_back({
+                    .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                    .dstSet = descriptorSets[imageIndex][submeshIndex],
+                    .dstBinding = V2_BindingTexture2D,
+                    .dstArrayElement = 0,
+                    .descriptorCount = 1,
+                    .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                    .pImageInfo = &ImageInfo[submeshIndex],
+                });
+            }
         }
     }
 
-    vkUpdateDescriptorSets(mDevice, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0,
-                           nullptr);
+    if (!writeDescriptorSets.empty())
+    {
+        vkUpdateDescriptorSets(mDevice, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(),
+                               0, nullptr);
+    }
 }
 
 void GraphicsPipelineV2::initCommon(GLFWwindow* window, VkRenderPass renderPass, VkShaderModule vsModule,
@@ -273,12 +286,18 @@ void GraphicsPipelineV2::initCommon(GLFWwindow* window, VkRenderPass renderPass,
 
 void GraphicsPipelineV2::createDescriptorPool(int32_t maxSets)
 {
+    std::vector<VkDescriptorPoolSize> poolSizes = {
+        {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, static_cast<uint32_t>(maxSets * 2)}, // VB + IB
+        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, static_cast<uint32_t>(maxSets)},
+        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, static_cast<uint32_t>(maxSets)},
+    };
+
     VkDescriptorPoolCreateInfo poolInfo{
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
         .flags = 0,
         .maxSets = static_cast<uint32_t>(maxSets),
-        .poolSizeCount = 0,
-        .pPoolSizes = NULL,
+        .poolSizeCount = static_cast<uint32_t>(poolSizes.size()),
+        .pPoolSizes = poolSizes.data(),
     };
 
     if (vkCreateDescriptorPool(mDevice, &poolInfo, nullptr, &mDescriptorPool) != VK_SUCCESS)
@@ -289,7 +308,7 @@ void GraphicsPipelineV2::createDescriptorPool(int32_t maxSets)
     std::cout << "Descriptor pool created successfully." << std::endl;
 }
 
-void GraphicsPipelineV2::createDescriptorSetLayout(bool isVB, bool isIB, bool isTex2D, bool isUniform, bool isCubemap)
+void GraphicsPipelineV2::createDescriptorSetLayout(bool isVB, bool isIB, bool isUniform, bool isTex2D, bool isCubemap)
 {
     std::vector<VkDescriptorSetLayoutBinding> layoutBindings;
 
