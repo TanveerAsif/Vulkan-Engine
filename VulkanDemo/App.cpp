@@ -80,6 +80,10 @@ App::~App()
 void App::init(std::string appName)
 {
     mWindow = VulkanCore::glfw_vulkan_init(mWindowWidth, mWindowHeight, appName.c_str());
+
+    // Set window icon
+    VulkanCore::glfw_set_window_icon(mWindow, "VulkanDemo/assets/appIcon.png");
+
     mVulkanCore.initialize(appName, mWindow, true /* enable depth buffer */);
     mNumImages = mVulkanCore.getSwapchainImageCount();
     mGraphicsQueue = mVulkanCore.getGraphicsQueue();

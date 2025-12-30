@@ -1,12 +1,12 @@
 #pragma once
-#include <vulkan/vulkan.h>
 #include <string>
+#include <vulkan/vulkan.h>
 
 namespace VulkanCore
 {
 
-    VkShaderModule CreateShaderModuleFromText(const VkDevice& device, const std::string& shaderCode);
+VkShaderModule CreateShaderModuleFromText(const VkDevice& device, const std::string& shaderCode);
 
-    VkShaderModule CreateShaderModuleFromBinary(const VkDevice& device, const std::string& shaderCode);
+VkShaderModule CreateShaderModuleFromBinary(const VkDevice& device, const std::string& shaderCode);
 
-};
+}; // namespace VulkanCore

@@ -5,21 +5,25 @@
 #include "Texture.h"
 #include <cstddef>
 
-namespace VulkanCore {
+namespace VulkanCore
+{
 
-struct SimpleMesh {
-  BufferAndMemory mVertexBuffer{};
-  size_t mVertexBufferSize = 0;
-  Texture* mTexture = nullptr;
+struct SimpleMesh
+{
+    BufferAndMemory mVertexBuffer{};
+    size_t mVertexBufferSize = 0;
+    Texture* mTexture = nullptr;
 
-  void Destroyed(VkDevice device) {
-    mVertexBuffer.Destroy(device);
-    if (mTexture) {
-        mTexture->destroy(device);
-        delete mTexture;
-        mTexture = nullptr;
+    void Destroyed(VkDevice device)
+    {
+        mVertexBuffer.Destroy(device);
+        if (mTexture)
+        {
+            mTexture->destroy(device);
+            delete mTexture;
+            mTexture = nullptr;
+        }
     }
-  }
 };
 
 } // namespace VulkanCore
