@@ -62,7 +62,15 @@ App::~App() {
     mCamera = nullptr;
   }
 
-  // 9. Cleanup Vulkan core resources in destructror of VulkanCore
+  // 9. Destroy model
+  if (mModel)
+  {
+      mModel->destroy();
+      delete mModel;
+      mModel = nullptr;
+  }
+
+  // 10. Cleanup Vulkan core resources in destructror of VulkanCore
 }
 
 void App::init(std::string appName) {

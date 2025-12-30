@@ -153,6 +153,7 @@ bool Model::initGeometry(const aiScene* pScene, const std::string& Filename)
 
     countVerticesAndIndices(pScene, NumVertices, NumIndices);
 
+    // initialize buffers
     if (pScene->mNumAnimations > 0)
     {
         // ToDo : Handle skinned meshes
@@ -199,6 +200,8 @@ bool Model::initMaterials(const aiScene* pScene, const std::string& Filename)
     {
         dir = Filename.substr(0, slashIndex);
     }
+    // All material data are in "textures" folder
+    dir += "/textures";
 
     for (uint32_t i = 0; i < m_Materials.size(); i++)
     {
@@ -246,6 +249,16 @@ void Model::loadTexture(const std::string& dir, const aiMaterial* pMaterial, int
             bool isSRGB = false; //(texType == TEXTURE_TYPE::TEX_TYPE_BASE); //
                                  // assuming base color texture is sRGB
 
+            // Clean up path by removing .\ or ./ prefix
+            std::string cleanPath = texturePath.C_Str();
+            if (cleanPath.size() >= 2 && cleanPath[0] == '.')
+            {
+                if (cleanPath[1] == '\\' || cleanPath[1] == '/')
+                {
+                    cleanPath = cleanPath.substr(2);
+                }
+            }
+
             if (paiTexture)
             {
                 // ToDo : implement embedded texture loading
@@ -253,7 +266,7 @@ void Model::loadTexture(const std::string& dir, const aiMaterial* pMaterial, int
             }
             else
             {
-                loadTextureFromFile(dir, texturePath.C_Str(), materialIndex, texType, isSRGB);
+                loadTextureFromFile(dir, cleanPath, materialIndex, texType, isSRGB);
             }
         }
     }
@@ -333,7 +346,16 @@ void Model::traverseNodeHierarchy(const glm::mat4& ParentTransformation, aiNode*
     }
 }
 
-Model::Model(std::string modelPath) : m_pScene{nullptr}
+Model::Model() : m_pScene{nullptr} {}
+
+Model::~Model()
+{
+    // Note: Texture destruction must be handled by derived class destructor
+    // before this base destructor runs, since destroyTexture() is pure virtual.
+    // The derived class should call destroyTextures() in its destructor.
+}
+
+void Model::initScene(std::string modelPath)
 {
     // Load model from the specified path
     Assimp::Importer importer;
@@ -359,13 +381,6 @@ Model::Model(std::string modelPath) : m_pScene{nullptr}
 
         // ToDo: lighting calc
     }
-}
-
-Model::~Model()
-{
-    // Note: Texture destruction must be handled by derived class destructor
-    // before this base destructor runs, since destroyTexture() is pure virtual.
-    // The derived class should call destroyTextures() in its destructor.
 }
 
 } // namespace VulkanCore::model

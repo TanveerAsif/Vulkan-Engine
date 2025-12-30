@@ -11,7 +11,10 @@
 
 namespace VulkanCore
 {
-VulkanModel::VulkanModel(std::string modelPath, VulkanCore* pVulkanCore) : Model(modelPath), mVulkanCore(pVulkanCore) {}
+VulkanModel::VulkanModel(std::string modelPath, VulkanCore* pVulkanCore) : Model(), mVulkanCore(pVulkanCore)
+{
+    initScene(modelPath);
+}
 
 void VulkanModel::populateBuffer(std::vector<Vertex>& vertices)
 {

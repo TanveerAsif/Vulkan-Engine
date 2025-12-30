@@ -3,6 +3,7 @@
 
 #include <assimp/material.h>
 #include <cstdint>
+#include <iostream>
 #include <vector>
 
 #include <glm/glm.hpp>
@@ -29,8 +30,10 @@ struct BasicMeshEntry
 class Model
 {
   public:
-    Model(std::string modelPath);
+    Model();
     virtual ~Model();
+
+    void initScene(std::string modelPath);
 
   protected:
     virtual Texture* allocTexture2D() = 0;
@@ -112,8 +115,10 @@ class Model
     template <typename VertexType>
     void initSingleMesh(std::vector<VertexType>& vertices, const aiMesh* mesh, uint32_t meshIndex)
     {
+        // std::cout << "Initializing mesh index " << meshIndex << " with " << mesh->mNumVertices << " vertices and "
+        //           << mesh->mNumFaces << " faces "
+        //           << " name " << mesh->mName.C_Str() << std::endl;
         VertexType vertex;
-
         // Process vertices
         for (unsigned int i = 0; i < mesh->mNumVertices; i++)
         {
