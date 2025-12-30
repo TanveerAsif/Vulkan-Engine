@@ -355,8 +355,12 @@ void App::updateUniformBuffer(uint32_t currentImage)
     //   mUniformBuffers[currentImage].update(mVulkanCore.getDevice(), &wvp,
     //                                        sizeof(wvp));
 
-    glm::mat4 wvp = mCamera->getVPMatrix();
-    mModel->update(currentImage, wvp);
+    // Scale the model down (adjust the scale factor as needed: 0.1 = 10% of original size)
+    // spider model is quite large, so scaling down to 10%
+    glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(0.1f, 0.1f, 0.1f));
+    glm::mat4 modelMatrix = scale; // No additional transformations
+    glm::mat4 vp = mCamera->getVPMatrix();
+    mModel->update(currentImage, vp * modelMatrix);
 }
 
 void App::defaultCreateCameraPers()
