@@ -2,6 +2,7 @@
 #include <vulkan/vulkan_core.h>
 
 #include "Core.h"
+#include "Texture.h"
 #include <cstddef>
 
 namespace VulkanCore {
@@ -9,14 +10,14 @@ namespace VulkanCore {
 struct SimpleMesh {
   BufferAndMemory mVertexBuffer{};
   size_t mVertexBufferSize = 0;
-  VulkanTexture *mTexture = nullptr;
+  Texture* mTexture = nullptr;
 
   void Destroyed(VkDevice device) {
     mVertexBuffer.Destroy(device);
     if (mTexture) {
-      mTexture->Destroy(device);
-      delete mTexture;
-      mTexture = nullptr;
+        mTexture->destroy(device);
+        delete mTexture;
+        mTexture = nullptr;
     }
   }
 };

@@ -14,6 +14,15 @@ cc_library(
     visibility = ["//visibility:public"],
 )
 
+cc_library(
+    name = "assimp",
+    linkopts = [
+        "-L/usr/local/lib",
+        "-lassimp",
+    ],
+    visibility = ["//visibility:public"],
+)
+
 
 cc_library(
     name = "VulkanCore",
@@ -22,17 +31,24 @@ cc_library(
         "Core.cpp",
         "GLFW.cpp",
         "GraphicsPipeline.cpp",
+        "GraphicsPipelineV2.cpp",
         "PhysicalDevice.cpp",
+        "model/Material.cpp",
+        "model/Mesh.cpp",
+        "model/Model.cpp",
         "Queue.cpp",
         "Shader.cpp",
         "SimpleMesh.cpp",
+        "Texture.cpp",
         "Wrapper.cpp",
+        "VulkanModel.cpp",
     ],
-    hdrs = glob(["include/*.h"]),
-    includes = ["include"],
+    hdrs = glob(["include/*.h"]) + glob(["model/include/*.h"]),
+    includes = ["include", "model/include"],
     deps = [
         ":vulkan",
         ":shaderc",
+        ":assimp",
         "//third_party:stb_image",
     ],
     visibility = ["//visibility:public"],
