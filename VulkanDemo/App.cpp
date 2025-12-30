@@ -250,12 +250,12 @@ void App::recordCommandBuffer() {
     mGraphicsPipelineV2->bind(mCommandBuffers[i]);
     mModel->recordCommandBuffer(mCommandBuffers[i], mGraphicsPipelineV2, i);
 
-    uint32_t vertexCount = 9;
-    uint32_t instanceCount = 1;
-    uint32_t firstVertex = 0;
-    uint32_t firstInstance = 0;
-    vkCmdDraw(mCommandBuffers[i], vertexCount, instanceCount, firstVertex,
-              firstInstance);
+    // uint32_t vertexCount = 9;
+    // uint32_t instanceCount = 1;
+    // uint32_t firstVertex = 0;
+    // uint32_t firstInstance = 0;
+    // vkCmdDraw(mCommandBuffers[i], vertexCount, instanceCount, firstVertex,
+    //           firstInstance);
     vkCmdEndRenderPass(mCommandBuffers[i]);
 
     if (vkEndCommandBuffer(mCommandBuffers[i]) != VK_SUCCESS) {
@@ -323,16 +323,19 @@ void App::createUniformBuffers() {
 }
 
 void App::updateUniformBuffer(uint32_t currentImage) {
-  static float_t time = 0.0f;
-  glm::mat4 rotate = glm::mat4(1.0f);
-  rotate = glm::rotate(rotate, glm::radians(time),
-                       glm::normalize(glm::vec3(0.0f, 0.0f, 1.0f)));
-  time += 0.1f; // assuming 60 FPS for simplicity
 
-  glm::mat4 wvp = mCamera->getVPMatrix() * rotate;
-  //   mUniformBuffers[currentImage].update(mVulkanCore.getDevice(), &wvp,
-  //                                        sizeof(wvp));
-  mModel->update(currentImage, wvp);
+    // static float_t time = 0.0f;
+    // glm::mat4 rotate = glm::mat4(1.0f);
+    // rotate = glm::rotate(rotate, glm::radians(time),
+    //                      glm::normalize(glm::vec3(0.0f, 0.0f, 1.0f)));
+    // time += 0.1f; // assuming 60 FPS for simplicity
+    //
+    //   glm::mat4 wvp = mCamera->getVPMatrix() * rotate;
+    //   mUniformBuffers[currentImage].update(mVulkanCore.getDevice(), &wvp,
+    //                                        sizeof(wvp));
+
+    glm::mat4 wvp = mCamera->getVPMatrix();
+    mModel->update(currentImage, wvp);
 }
 
 void App::defaultCreateCameraPers() {

@@ -47,6 +47,8 @@ class VulkanModel : public model::Model
 
   private:
     void updateModelDesc(ModelDesc& desc);
+    void updateAlignedMeshesArray();
+    void createBuffers(std::vector<Vertex>& vertices);
 
     VulkanCore* mVulkanCore;
 
@@ -55,6 +57,15 @@ class VulkanModel : public model::Model
     std::vector<BufferAndMemory> mUniformBuffers;
     std::vector<std::vector<VkDescriptorSet>> mDescriptorSets;
     uint32_t mVertexSize{0}; // sizeof(Vertex) or sizeof(SkinnedVertex)
+
+    struct VulkanMeshEntry
+    {
+        size_t VertexBufferOffset{0};
+        size_t IndexBufferOffset{0};
+        size_t VertexBufferRange{0};
+        size_t IndexBufferRange{0};
+    };
+    std::vector<VulkanMeshEntry> mAlignedMeshes;
 };
 
 } // namespace VulkanCore

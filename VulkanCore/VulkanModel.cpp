@@ -1,5 +1,6 @@
 #include "VulkanModel.h"
 #include "Material.h"
+#include <cstddef>
 #include <cstdint>
 
 #include <iostream>
@@ -19,10 +20,78 @@ VulkanModel::VulkanModel(std::string modelPath, VulkanCore* pVulkanCore) : Model
 void VulkanModel::populateBuffer(std::vector<Vertex>& vertices)
 {
     // Populate the vertex using PVP style
-    mVertexBuffer = mVulkanCore->createVertexBuffer(vertices.data(), sizeof(Vertex) * vertices.size());
-    mIndexBuffer = mVulkanCore->createVertexBuffer(m_Indices.data(), sizeof(uint32_t) * m_Indices.size());
-    mUniformBuffers = mVulkanCore->createUniformBuffers(sizeof(glm::mat4) * m_Meshes.size());
     mVertexSize = sizeof(Vertex);
+
+    updateAlignedMeshesArray();
+    createBuffers(vertices);
+}
+
+void VulkanModel::updateAlignedMeshesArray()
+{
+    mAlignedMeshes.resize(m_Meshes.size());
+    VkDeviceSize alignment = mVulkanCore->getPhysicalDeviceLimits().minStorageBufferOffsetAlignment;
+
+    size_t BaseVertexOffset{0};
+    size_t BaseIndexOffset{0};
+    for (size_t meshIndex = 0; meshIndex < m_Meshes.size(); meshIndex++)
+    {
+        // VB offset - align to storage buffer alignment
+        mAlignedMeshes[meshIndex].VertexBufferOffset = BaseVertexOffset;
+        mAlignedMeshes[meshIndex].VertexBufferRange = m_Meshes[meshIndex].NumVertices * mVertexSize;
+
+        BaseVertexOffset += mAlignedMeshes[meshIndex].VertexBufferRange;
+        BaseVertexOffset = (BaseVertexOffset + alignment - 1) & ~(alignment - 1); // align to next boundary
+
+        // IB offset - align to storage buffer alignment
+        mAlignedMeshes[meshIndex].IndexBufferOffset = BaseIndexOffset;
+        mAlignedMeshes[meshIndex].IndexBufferRange = m_Meshes[meshIndex].NumIndices * sizeof(uint32_t);
+
+        BaseIndexOffset += mAlignedMeshes[meshIndex].IndexBufferRange;
+        BaseIndexOffset = (BaseIndexOffset + alignment - 1) & ~(alignment - 1); // align to next boundary
+    }
+}
+
+void VulkanModel::createBuffers(std::vector<Vertex>& vertices)
+{
+    size_t numSubMeshes = m_Meshes.size();
+
+    // Calculate total sizes : last buffer = offset + range
+    size_t vertexBufferSize =
+        mAlignedMeshes[numSubMeshes - 1].VertexBufferOffset + mAlignedMeshes[numSubMeshes - 1].VertexBufferRange;
+
+    // Calculate total sizes : last buffer = offset + range
+    size_t indexBufferSize =
+        mAlignedMeshes[numSubMeshes - 1].IndexBufferOffset + mAlignedMeshes[numSubMeshes - 1].IndexBufferRange;
+
+    char* pAlignedVertices = (char*)malloc(vertexBufferSize);
+    char* pSrcVertices = (char*)vertices.data();
+
+    char* pAlignedIndices = (char*)malloc(indexBufferSize);
+    char* pSrcIndices = (char*)m_Indices.data();
+
+    for (size_t meshIndex = 0; meshIndex < numSubMeshes; meshIndex++)
+    {
+        // Copy vertices
+        size_t srcOffset = m_Meshes[meshIndex].BaseVertex * mVertexSize;
+        char* pSrc = pSrcVertices + srcOffset;
+        char* pDst = pAlignedVertices + mAlignedMeshes[meshIndex].VertexBufferOffset;
+        size_t copySize = mAlignedMeshes[meshIndex].VertexBufferRange;
+        memcpy(pDst, pSrc, copySize);
+
+        // Copy indices
+        srcOffset = m_Meshes[meshIndex].BaseIndex * sizeof(uint32_t);
+        pSrc = pSrcIndices + srcOffset;
+        pDst = pAlignedIndices + mAlignedMeshes[meshIndex].IndexBufferOffset;
+        copySize = mAlignedMeshes[meshIndex].IndexBufferRange;
+        memcpy(pDst, pSrc, copySize);
+    }
+
+    mVertexBuffer = mVulkanCore->createVertexBuffer(pAlignedVertices, vertexBufferSize);
+    mIndexBuffer = mVulkanCore->createVertexBuffer(pAlignedIndices, indexBufferSize);
+    mUniformBuffers = mVulkanCore->createUniformBuffers(sizeof(glm::mat4) * m_Meshes.size());
+
+    free(pAlignedVertices);
+    free(pAlignedIndices);
 }
 
 Texture* VulkanModel::allocTexture2D()
@@ -77,14 +146,11 @@ void VulkanModel::updateModelDesc(ModelDesc& desc)
     desc.mRanges.resize(m_Meshes.size());
     desc.mMaterials.resize(m_Meshes.size());
 
-    // Alignment requirement for storage buffers
-    constexpr size_t storageBufferAlignment = 16;
-
     int32_t numSubmeshes = static_cast<int32_t>(m_Meshes.size());
     for (int32_t meshIndex = 0; meshIndex < numSubmeshes; meshIndex++)
     {
         int32_t materialIndex = m_Meshes[meshIndex].MaterialIndex;
-        if ((materialIndex >= 0) && (materialIndex < static_cast<int32_t>(m_Materials.size())))
+        if ((materialIndex >= 0) && (m_Materials[materialIndex].mpTextures[model::TEXTURE_TYPE::TEX_TYPE_BASE]))
         {
             Texture* pDiffuse = m_Materials[materialIndex].mpTextures[model::TEXTURE_TYPE::TEX_TYPE_BASE];
             desc.mMaterials[meshIndex].mImageView = pDiffuse->mImageView;
@@ -100,27 +166,27 @@ void VulkanModel::updateModelDesc(ModelDesc& desc)
         }
 
         // VB offset - align to storage buffer alignment
-        size_t offset = m_Meshes[meshIndex].BaseVertex * mVertexSize;
-        offset = (offset + storageBufferAlignment - 1) & ~(storageBufferAlignment - 1); // Round up to alignment
-        size_t range = m_Meshes[meshIndex].NumVertices * mVertexSize;
-        desc.mRanges[meshIndex].mVbRange = RangeDesc{.mOffset = offset, .mRange = range};
+        size_t offset = mAlignedMeshes[meshIndex].VertexBufferOffset;
+        size_t range = mAlignedMeshes[meshIndex].VertexBufferRange;
 
-        // IB offset - align to storage buffer alignment
-        offset = m_Meshes[meshIndex].BaseIndex * sizeof(uint32_t);
-        offset = (offset + storageBufferAlignment - 1) & ~(storageBufferAlignment - 1); // Round up to alignment
-        range = m_Meshes[meshIndex].NumIndices * sizeof(uint32_t);
-        desc.mRanges[meshIndex].mIbRange = RangeDesc{.mOffset = offset, .mRange = range};
+        desc.mRanges[meshIndex].mVbRange = {.mOffset = offset, .mRange = range};
+
+        offset = mAlignedMeshes[meshIndex].IndexBufferOffset;
+        range = mAlignedMeshes[meshIndex].IndexBufferRange;
+        desc.mRanges[meshIndex].mIbRange = {
+            .mOffset = offset,
+            .mRange = range,
+        };
 
         offset = meshIndex * sizeof(glm::mat4);
         range = sizeof(glm::mat4);
-        desc.mRanges[meshIndex].mUniformRange = RangeDesc{.mOffset = offset, .mRange = range};
+        desc.mRanges[meshIndex].mUniformRange = {.mOffset = offset, .mRange = range};
     }
 }
 
 void VulkanModel::recordCommandBuffer(VkCommandBuffer commandBuffer, GraphicsPipelineV2* pPipeline, uint32_t imageIndex)
 {
     uint32_t instanceCount{1};
-    uint32_t baseVertex{0};
 
     uint32_t numSubmeshes = static_cast<uint32_t>(m_Meshes.size());
     for (uint32_t submeshIndex = 0; submeshIndex < numSubmeshes; submeshIndex++)
@@ -132,7 +198,11 @@ void VulkanModel::recordCommandBuffer(VkCommandBuffer commandBuffer, GraphicsPip
                                 0,        // dynamicOffsetCount
                                 nullptr); // pDynamicOffsets
 
-        vkCmdDraw(commandBuffer, m_Meshes[submeshIndex].NumIndices, instanceCount, baseVertex, submeshIndex);
+        // Draw using vertex count = index count, starting from BaseIndex
+        uint32_t vertexCount = m_Meshes[submeshIndex].NumIndices;
+        uint32_t firstVertex = m_Meshes[submeshIndex].BaseIndex;
+        uint32_t firstInstance = 0;
+        vkCmdDraw(commandBuffer, vertexCount, instanceCount, firstVertex, firstInstance);
     }
 }
 
