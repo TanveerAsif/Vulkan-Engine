@@ -702,14 +702,14 @@ BufferAndMemory VulkanCore::createBuffer(VkDeviceSize size, VkBufferUsageFlags u
     // Step 2. get buffer memory requirements
     VkMemoryRequirements memRequirements{};
     vkGetBufferMemoryRequirements(mLogicalDevice, bufferAndMemory.mBuffer, &memRequirements);
-    std::cout << "Buffer memory requirements: size = " << memRequirements.size
-              << ", alignment = " << memRequirements.alignment
-              << ", memoryTypeBits = " << memRequirements.memoryTypeBits << std::endl;
+    // std::cout << "Buffer memory requirements: size = " << memRequirements.size
+    //           << ", alignment = " << memRequirements.alignment
+    //           << ", memoryTypeBits = " << memRequirements.memoryTypeBits << std::endl;
     // bufferAndMemory.mAllocationSize = memRequirements.size;
 
     // Step 3. get the memory type index
     uint32_t memoryTypeIndex = getMemoryTypeIndex(memRequirements.memoryTypeBits, reqMemPropFlags);
-    std::cout << "Selected memory type index: " << memoryTypeIndex << std::endl;
+    // std::cout << "Selected memory type index: " << memoryTypeIndex << std::endl;
 
     VkMemoryAllocateInfo allocInfo = {.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
                                       .pNext = nullptr,
@@ -814,8 +814,8 @@ void VulkanCore::createTexture(std::string filePath, Texture& outTexture)
         throw std::runtime_error("Failed to load texture image: " + filePath);
     }
 
-    std::cout << "Loaded texture: " << filePath << " (" << texWidth << "x" << texHeight
-              << ", original channels: " << texChannels << ")" << std::endl;
+    // std::cout << "Loaded texture: " << filePath << " (" << texWidth << "x" << texHeight
+    //           << ", original channels: " << texChannels << ")" << std::endl;
 
     // Store dimensions
     outTexture.mWidth = static_cast<uint32_t>(texWidth);
@@ -840,7 +840,7 @@ void VulkanCore::createTexture(std::string filePath, Texture& outTexture)
     VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT;
     outTexture.mSampler = createTextureSampler(mLogicalDevice, minFilter, magFilter, addressMode);
 
-    std::cout << "Texture created successfully from file: " << filePath << std::endl;
+    // std::cout << "Texture created successfully from file: " << filePath << std::endl;
 }
 
 void VulkanCore::createTextureImageFromData(Texture& outTexture, const void* pixels, int texWidth, int texHeight,
@@ -885,7 +885,7 @@ void VulkanCore::createImage(Texture& outTexture, uint32_t width, uint32_t heigh
 
     // Step3 : get memory type index
     uint32_t memoryTypeIndex = getMemoryTypeIndex(memRequirements.memoryTypeBits, reqMemPropFlags);
-    std::cout << "Selected memory type index for image: " << memoryTypeIndex << std::endl;
+    // std::cout << "Selected memory type index for image: " << memoryTypeIndex << std::endl;
 
     // Step4 : allocate memory
     VkMemoryAllocateInfo allocInfo = {.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,

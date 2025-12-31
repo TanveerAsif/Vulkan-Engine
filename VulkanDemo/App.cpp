@@ -265,7 +265,7 @@ void App::createShaders()
         VulkanCore::CreateShaderModuleFromText(mVulkanCore.getDevice(), "VulkanDemo/shaders/triangle.vert");
     mFSShaderModule =
         VulkanCore::CreateShaderModuleFromText(mVulkanCore.getDevice(), "VulkanDemo/shaders/triangle.frag");
-    std::cout << "Shader modules created successfully." << std::endl;
+    // std::cout << "Shader modules created successfully." << std::endl;
 }
 
 struct UniformData
