@@ -19,6 +19,28 @@ struct PhysicalDeviceProperties
     VkPhysicalDeviceMemoryProperties mMemoryProperties;
     VkPhysicalDeviceFeatures mFeatures;
     VkFormat mDepthFormat;
+    struct
+    {
+        uint32_t variant{0};
+        uint32_t major{0};
+        uint32_t minor{0};
+        uint32_t patch{0};
+    } mInstanceVersion;
+    std::vector<VkExtensionProperties> mSupportedExtensions;
+
+    bool isExtensionSupported(const char* extensionName) const
+    {
+        std::string requestedExt(extensionName);
+        for (const auto& extension : mSupportedExtensions)
+        {
+            std::string extName(extension.extensionName);
+            if (extName == requestedExt)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
 };
 
 class PhysicalDevice
@@ -33,6 +55,9 @@ class PhysicalDevice
 
   private:
     void printPhysicalDeviceInfo();
+    void getExtension(uint32_t deviceIndex);
+    void getDeviceAPIVersion(uint32_t deviceIndex);
+
     std::vector<PhysicalDeviceProperties> mDevices;
     int mSelectedPhysicalDeviceIndex;
 };

@@ -80,6 +80,9 @@ class VulkanCore
         return mPhysicalDevice.getSelectedPhysicalDeviceProperties().mDeviceProperties.limits;
     }
 
+    VkImageView getSwapchainImageView(uint32_t index) const;
+    VkImageView getDepthImageView(uint32_t index) const;
+
   private:
     void createInstance(std::string appName);
     void createDebugCallback();
@@ -101,6 +104,8 @@ class VulkanCore
     void submitCopyCommand();
     void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
     void createDepthResources();
+
+    void getInstanceVersion();
 
     VkInstance mVulkanInstance;
     VkDebugUtilsMessengerEXT mDebugMessenger;
@@ -130,6 +135,13 @@ class VulkanCore
 
     bool mDepthEnabled;
     std::vector<Texture> mDepthImages;
+
+    struct InstanceVersion
+    {
+        uint32_t major{0};
+        uint32_t minor{0};
+        uint32_t patch{0};
+    } mInstanceVersion;
 };
 
 } // namespace VulkanCore

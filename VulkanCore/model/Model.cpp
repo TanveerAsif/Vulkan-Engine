@@ -64,13 +64,13 @@ void setMaterialType(const aiMaterial* pMaterial, CoreMaterial& MyMaterial)
     switch (ShadingModel)
     {
         case aiShadingMode_Unlit:
-            std::cout << "Shading model: Unlit\n";
+            // std::cout << "Shading model: Unlit\n";
             mt = model::MaterialType::MaterialType_Unlit;
             break;
 
         case aiShadingMode_PBR_BRDF:
         {
-            std::cout << "Shading model: PBR BRDF\n";
+            // std::cout << "Shading model: PBR BRDF\n";
             MyMaterial.m_isPBR = true;
             float factor = 0;
             if (pMaterial->Get(AI_MATKEY_METALLIC_FACTOR, factor) == AI_SUCCESS)
@@ -81,11 +81,11 @@ void setMaterialType(const aiMaterial* pMaterial, CoreMaterial& MyMaterial)
         break;
 
         case aiShadingMode_Gouraud:
-            std::cout << "Shading model: Gouraud\n";
+            // std::cout << "Shading model: Gouraud\n";
             break;
 
         case aiShadingMode_Phong:
-            std::cout << "Shading model: Phong\n";
+            // std::cout << "Shading model: Phong\n";
             break;
 
         default:
@@ -109,16 +109,16 @@ int32_t countValidFaces(const aiMesh* mesh)
     return validFaces;
 }
 
-int32_t getTextureCount(const aiMaterial* pMaterial)
-{
-    int32_t textureCount{0};
-    for (int32_t i{0}; i <= AI_TEXTURE_TYPE_MAX; ++i)
-    {
-        aiTextureType texType = static_cast<aiTextureType>(i);
-        textureCount += pMaterial->GetTextureCount(texType);
-    }
-    return textureCount;
-}
+// int32_t getTextureCount(const aiMaterial* pMaterial)
+// {
+//     int32_t textureCount{0};
+//     for (int32_t i{0}; i <= AI_TEXTURE_TYPE_MAX; ++i)
+//     {
+//         aiTextureType texType = static_cast<aiTextureType>(i);
+//         textureCount += pMaterial->GetTextureCount(texType);
+//     }
+//     return textureCount;
+// }
 
 bool getFullTransformation(const aiNode* pRootNode, const char* pName, glm::mat4& Transformation)
 {
@@ -216,8 +216,8 @@ bool Model::initMaterials(const aiScene* pScene, const std::string& Filename)
 
 void Model::loadTexturesFromMaterial(const aiMaterial* pMaterial, const std::string& dir, int32_t materialIndex)
 {
-    int32_t textureCount = getTextureCount(pMaterial);
-    std::cout << "Material index " << materialIndex << " has " << textureCount << " textures." << std::endl;
+    // int32_t textureCount = getTextureCount(pMaterial);
+    // std::cout << "Material index " << materialIndex << " has " << textureCount << " textures." << std::endl;
     loadDiffuseTexture(dir, pMaterial, materialIndex);
     loadSpecularTexture(dir, pMaterial, materialIndex);
     loadNormalTexture(dir, pMaterial, materialIndex);
@@ -278,7 +278,7 @@ void Model::loadTextureFromFile(const std::string& Dir, const std::string& Path,
     std::string fullPath = Dir + "/" + Path;
     m_Materials[MaterialIndex].mpTextures[MyType] = allocTexture2D();
     m_Materials[MaterialIndex].mpTextures[MyType]->LoadFromFile(fullPath);
-    std::cout << "Loaded texture: " << fullPath << std::endl;
+    // std::cout << "Loaded texture: " << fullPath << std::endl;
 }
 
 void Model::loadDiffuseTexture(const std::string& dir, const aiMaterial* pMaterial, int32_t materialIndex)

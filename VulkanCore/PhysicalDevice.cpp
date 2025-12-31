@@ -1,5 +1,6 @@
 
 
+#include <algorithm>
 #include <cstdint>
 #include <iostream>
 #include <vector>
@@ -69,6 +70,8 @@ void PhysicalDevice::init(const VkInstance& instance, const VkSurfaceKHR& surfac
         mDevices[i].mPhysicalDevice = PhysDev;
 
         vkGetPhysicalDeviceProperties(PhysDev, &mDevices[i].mDeviceProperties);
+        getDeviceAPIVersion(i);
+        getExtension(i);
 
         // Get queue family properties : like graphics, compute, transfer etc.,
         // each family can have multiple queues
@@ -136,23 +139,77 @@ uint32_t PhysicalDevice::selectPhysicalDevice(VkQueueFlags requiredQueueFlags, b
     // VkQueueFlags : bitmask specifying capabilities of queues
     // e.g., VK_QUEUE_GRAPHICS_BIT, VK_QUEUE_COMPUTE_BIT, VK_QUEUE_TRANSFER_BIT etc.,
     // we need to find a physical device that has at least one queue family that supports the required flags
+
+    // Collect all suitable devices with scoring to prefer better GPUs
+    struct SuitableDevice
+    {
+        uint32_t deviceIndex;
+        uint32_t queueFamilyIndex;
+
+        // Higher score means better device
+        // 1000+ for discrete GPUs
+        // 500+ for Vulkan 1.3+ support
+        // 250+ for dynamic rendering support
+        int score;
+    };
+    std::vector<SuitableDevice> suitableDevices;
+
     for (uint32_t devIdx{0}; devIdx < mDevices.size(); ++devIdx)
     {
-
         for (uint32_t qFamilyProp = 0; qFamilyProp < mDevices[devIdx].mQueueFamilyProperties.size(); ++qFamilyProp)
         {
             const auto& queueFamily = mDevices[devIdx].mQueueFamilyProperties[qFamilyProp];
             if ((queueFamily.queueFlags & requiredQueueFlags) &&
                 (mDevices[devIdx].mQueueSupportPresent[qFamilyProp] == requirePresentSupport))
             {
-                mSelectedPhysicalDeviceIndex = static_cast<int>(devIdx);
-                std::cout << "Selected Physical Device: " << mDevices[devIdx].mDeviceProperties.deviceName << std::endl;
-                return devIdx;
+                // Score this device based on desirable properties
+                int score = 0;
+
+                // Strongly prefer discrete GPUs (dedicated graphics cards)
+                if (mDevices[devIdx].mDeviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+                {
+                    score += 1000;
+                }
+                else if (mDevices[devIdx].mDeviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)
+                {
+                    score += 100;
+                }
+
+                // Prefer devices with Vulkan 1.3+ (dynamic rendering is core)
+                bool device_is_1_3_or_above =
+                    (mDevices[devIdx].mInstanceVersion.major > 1) ||
+                    (mDevices[devIdx].mInstanceVersion.major == 1 && mDevices[devIdx].mInstanceVersion.minor >= 3);
+                if (device_is_1_3_or_above)
+                {
+                    score += 500;
+                }
+
+                // Prefer devices with dynamic rendering extension support
+                if (mDevices[devIdx].isExtensionSupported(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME))
+                {
+                    score += 250;
+                }
+
+                suitableDevices.push_back({devIdx, qFamilyProp, score});
+                break; // Found a suitable queue family for this device
             }
         }
     }
 
-    throw std::runtime_error("Failed to find a suitable GPU.");
+    if (suitableDevices.empty())
+    {
+        throw std::runtime_error("Failed to find a suitable GPU.");
+    }
+
+    // Sort by score (highest first) and select the best device
+    std::sort(suitableDevices.begin(), suitableDevices.end(),
+              [](const SuitableDevice& a, const SuitableDevice& b) { return a.score > b.score; });
+
+    const auto& selected = suitableDevices[0];
+    mSelectedPhysicalDeviceIndex = static_cast<int>(selected.deviceIndex);
+    std::cout << "Selected Physical Device: " << mDevices[selected.deviceIndex].mDeviceProperties.deviceName
+              << " (score: " << selected.score << ")" << std::endl;
+    return selected.queueFamilyIndex;
 }
 
 const PhysicalDeviceProperties& PhysicalDevice::getSelectedPhysicalDeviceProperties() const
@@ -177,4 +234,36 @@ void PhysicalDevice::printPhysicalDeviceInfo()
         //           << VK_VERSION_PATCH(deviceProperties.apiVersion) << std::endl;
     }
 }
+
+void PhysicalDevice::getExtension(uint32_t deviceIndex)
+{
+    PhysicalDeviceProperties& device = mDevices[deviceIndex];
+
+    uint32_t extensionCount = 0;
+    vkEnumerateDeviceExtensionProperties(device.mPhysicalDevice, nullptr, &extensionCount, nullptr);
+
+    device.mSupportedExtensions.resize(extensionCount);
+    vkEnumerateDeviceExtensionProperties(device.mPhysicalDevice, nullptr, &extensionCount,
+                                         device.mSupportedExtensions.data());
+
+    // std::cout << "Supported Extensions for device " << device.mDeviceProperties.deviceName << ":" << std::endl;
+    // for(const auto& ext : device.mSupportedExtensions)
+    // {
+    //     std::cout << "Extension: " << ext.extensionName << std::endl;
+    // }
+}
+
+void PhysicalDevice::getDeviceAPIVersion(uint32_t deviceIndex)
+{
+    PhysicalDeviceProperties& device = mDevices[deviceIndex];
+    uint32_t apiVersion = device.mDeviceProperties.apiVersion;
+
+    device.mInstanceVersion.major = VK_VERSION_MAJOR(apiVersion);
+    device.mInstanceVersion.minor = VK_VERSION_MINOR(apiVersion);
+    device.mInstanceVersion.patch = VK_VERSION_PATCH(apiVersion);
+
+    std::cout << "Device API Version: " << device.mInstanceVersion.major << "." << device.mInstanceVersion.minor << "."
+              << device.mInstanceVersion.patch << std::endl;
+}
+
 } // namespace VulkanCore
