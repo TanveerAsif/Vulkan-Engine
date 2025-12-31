@@ -46,6 +46,7 @@ class App : public VulkanCore::GLFWCallbacks
     void renderScene();
     void createMesh();
     void loadTexture();
+    void beginRendering(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
     GLFWwindow* mWindow;
     VulkanCore::VulkanCore mVulkanCore;
@@ -55,9 +56,6 @@ class App : public VulkanCore::GLFWCallbacks
 
     int32_t mNumImages;
     std::vector<VkCommandBuffer> mCommandBuffers;
-
-    VkRenderPass mRenderPass;
-    std::vector<VkFramebuffer> mFrameBuffers;
 
     VkShaderModule mVSShaderModule;
     VkShaderModule mFSShaderModule;

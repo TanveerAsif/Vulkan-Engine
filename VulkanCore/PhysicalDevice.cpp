@@ -69,6 +69,8 @@ void PhysicalDevice::init(const VkInstance& instance, const VkSurfaceKHR& surfac
         mDevices[i].mPhysicalDevice = PhysDev;
 
         vkGetPhysicalDeviceProperties(PhysDev, &mDevices[i].mDeviceProperties);
+        getDeviceAPIVersion(i);
+        getExtension(i);
 
         // Get queue family properties : like graphics, compute, transfer etc.,
         // each family can have multiple queues
@@ -177,4 +179,36 @@ void PhysicalDevice::printPhysicalDeviceInfo()
         //           << VK_VERSION_PATCH(deviceProperties.apiVersion) << std::endl;
     }
 }
+
+void PhysicalDevice::getExtension(uint32_t deviceIndex)
+{
+    PhysicalDeviceProperties& device = mDevices[deviceIndex];
+
+    uint32_t extensionCount = 0;
+    vkEnumerateDeviceExtensionProperties(device.mPhysicalDevice, nullptr, &extensionCount, nullptr);
+
+    device.mSupportedExtensions.resize(extensionCount);
+    vkEnumerateDeviceExtensionProperties(device.mPhysicalDevice, nullptr, &extensionCount,
+                                         device.mSupportedExtensions.data());
+
+    // std::cout << "Supported Extensions for device " << device.mDeviceProperties.deviceName << ":" << std::endl;
+    // for(const auto& ext : device.mSupportedExtensions)
+    // {
+    //     std::cout << "Extension: " << ext.extensionName << std::endl;
+    // }
+}
+
+void PhysicalDevice::getDeviceAPIVersion(uint32_t deviceIndex)
+{
+    PhysicalDeviceProperties& device = mDevices[deviceIndex];
+    uint32_t apiVersion = device.mDeviceProperties.apiVersion;
+
+    device.mInstanceVersion.major = VK_VERSION_MAJOR(apiVersion);
+    device.mInstanceVersion.minor = VK_VERSION_MINOR(apiVersion);
+    device.mInstanceVersion.patch = VK_VERSION_PATCH(apiVersion);
+
+    std::cout << "Device API Version: " << device.mInstanceVersion.major << "." << device.mInstanceVersion.minor << "."
+              << device.mInstanceVersion.patch << std::endl;
+}
+
 } // namespace VulkanCore

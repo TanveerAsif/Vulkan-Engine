@@ -127,6 +127,7 @@ void VulkanCore::initialize(std::string appName, GLFWwindow* window, bool depthE
 
 void VulkanCore::createInstance(std::string appName)
 {
+    getInstanceVersion();
     std::vector<const char*> layers = {"VK_LAYER_KHRONOS_validation"};
 
     std::vector<const char*> extensions = {
@@ -141,13 +142,15 @@ void VulkanCore::createInstance(std::string appName)
         VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
     };
 
-    VkApplicationInfo appInfo = {};
-    appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-    appInfo.pApplicationName = appName.c_str();
-    appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-    appInfo.pEngineName = "No Engine";
-    appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-    appInfo.apiVersion = VK_API_VERSION_1_0;
+    VkApplicationInfo appInfo = {
+        .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
+        .pNext = nullptr,
+        .pApplicationName = appName.c_str(),
+        .applicationVersion = VK_MAKE_API_VERSION(0, 1, 0, 0),
+        .pEngineName = "No Engine",
+        .engineVersion = VK_MAKE_API_VERSION(0, 1, 0, 0),
+        .apiVersion = VK_MAKE_API_VERSION(0, mInstanceVersion.major, mInstanceVersion.minor, 0),
+    };
 
     VkInstanceCreateInfo createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -268,8 +271,39 @@ void VulkanCore::createLogicalDevice()
                                                  // Indexed drawing with base vertex offsets
                                                  VK_KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME};
 
+    bool deviceSupportsDynamicRendering =
+        physicalDeviceProps.isExtensionSupported(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
+    bool device_is_1_3_or_above =
+        (physicalDeviceProps.mInstanceVersion.major > 1) ||
+        (physicalDeviceProps.mInstanceVersion.major == 1 && physicalDeviceProps.mInstanceVersion.minor >= 3);
+
+    // dynamic rendering is core in Vulkan 1.3 and above
+    if (deviceSupportsDynamicRendering || device_is_1_3_or_above)
+    {
+        if (device_is_1_3_or_above)
+        {
+            std::cout << "Dynamic rendering is core feature (Vulkan 1.3+)." << std::endl;
+        }
+        else
+        {
+            deviceExtensions.push_back(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
+            std::cout << "Dynamic rendering extension enabled." << std::endl;
+        }
+    }
+    else
+    {
+        std::cout << "Dynamic rendering not supported by device." << std::endl;
+        throw std::runtime_error("Dynamic rendering not supported by physical device.");
+    }
+
+    VkPhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeature = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES,
+        .pNext = nullptr,
+        .dynamicRendering = VK_TRUE,
+    };
+
     VkDeviceCreateInfo deviceCreateInfo = {.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-                                           .pNext = nullptr,
+                                           .pNext = &dynamicRenderingFeature,
                                            .flags = 0,
                                            .queueCreateInfoCount = 1,
                                            .pQueueCreateInfos = &queueCreateInfo,
@@ -959,6 +993,35 @@ void VulkanCore::createDepthResources()
         VkImageAspectFlags aspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT;
         mDepthImages[i].mImageView = createImageView(mLogicalDevice, mDepthImages[i].mImage, depthFormat, aspectFlags);
     }
+}
+
+void VulkanCore::getInstanceVersion()
+{
+    uint32_t apiVersion = 0;
+    vkEnumerateInstanceVersion(&apiVersion);
+    mInstanceVersion.major = VK_VERSION_MAJOR(apiVersion);
+    mInstanceVersion.minor = VK_VERSION_MINOR(apiVersion);
+    mInstanceVersion.patch = VK_VERSION_PATCH(apiVersion);
+    std::cout << "Vulkan Instance Version: " << mInstanceVersion.major << "." << mInstanceVersion.minor << "."
+              << mInstanceVersion.patch << std::endl;
+}
+
+VkImageView VulkanCore::getDepthImageView(uint32_t index) const
+{
+    if (index >= mDepthImages.size())
+    {
+        throw std::out_of_range("Depth image index out of range: " + std::to_string(index));
+    }
+    return mDepthImages[index].mImageView;
+}
+
+VkImageView VulkanCore::getSwapchainImageView(uint32_t index) const
+{
+    if (index >= mSwapchainImageViews.size())
+    {
+        throw std::out_of_range("Swapchain image view index out of range: " + std::to_string(index));
+    }
+    return mSwapchainImageViews[index];
 }
 
 } // namespace VulkanCore

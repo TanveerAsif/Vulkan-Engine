@@ -19,8 +19,8 @@ namespace VulkanApp
 
 App::App(int32_t width, int32_t height)
     : mWindow{nullptr}, mVulkanCore{}, mGraphicsQueue{nullptr},
-      /*mGraphicsPipeline{nullptr},*/ mNumImages{0}, mCommandBuffers{}, mRenderPass{VK_NULL_HANDLE}, mFrameBuffers{},
-      mWindowWidth{width}, mWindowHeight{height}, mCamera{nullptr}, mGraphicsPipelineV2{nullptr}, mModel{nullptr}
+      /*mGraphicsPipeline{nullptr},*/ mNumImages{0}, mCommandBuffers{}, mWindowWidth{width},
+      mWindowHeight{height}, mCamera{nullptr}, mGraphicsPipelineV2{nullptr}, mModel{nullptr}
 {
 }
 
@@ -29,14 +29,11 @@ App::~App()
     // 1. Command buffers will be freed when command pool is destroyed
     mVulkanCore.freeCommandBuffers(mCommandBuffers.data(), mNumImages);
 
-    // 2. Destroy framebuffers
-    mVulkanCore.destroyFramebuffers(mFrameBuffers);
-
-    // 3. Destroy shader modules
+    // 2. Destroy shader modules
     vkDestroyShaderModule(mVulkanCore.getDevice(), mVSShaderModule, nullptr);
     vkDestroyShaderModule(mVulkanCore.getDevice(), mFSShaderModule, nullptr);
 
-    // 4. Destroy graphics pipeline
+    // 3. Destroy graphics pipeline
     // if (mGraphicsPipeline) {
     //   delete mGraphicsPipeline;
     //   mGraphicsPipeline = nullptr;
@@ -47,26 +44,23 @@ App::~App()
         mGraphicsPipelineV2 = nullptr;
     }
 
-    // 5. Destroy render pass
-    vkDestroyRenderPass(mVulkanCore.getDevice(), mRenderPass, nullptr);
-
-    // 6. Destroy vertex buffer
+    // 4. Destroy vertex buffer
     mMesh.Destroyed(mVulkanCore.getDevice());
 
-    // 7. Destroy uniform buffers
+    // 5. Destroy uniform buffers
     for (auto& uniformBuffer : mUniformBuffers)
     {
         uniformBuffer.Destroy(mVulkanCore.getDevice());
     }
 
-    // 8. Delete camera
+    // 6. Delete camera
     if (mCamera)
     {
         delete mCamera;
         mCamera = nullptr;
     }
 
-    // 9. Destroy model
+    // 7. Destroy model
     if (mModel)
     {
         mModel->destroy();
@@ -74,7 +68,7 @@ App::~App()
         mModel = nullptr;
     }
 
-    // 10. Cleanup Vulkan core resources in destructror of VulkanCore
+    // 8. Cleanup Vulkan core resources in destructror of VulkanCore
 }
 
 void App::init(std::string appName)
@@ -87,8 +81,6 @@ void App::init(std::string appName)
     mVulkanCore.initialize(appName, mWindow, true /* enable depth buffer */);
     mNumImages = mVulkanCore.getSwapchainImageCount();
     mGraphicsQueue = mVulkanCore.getGraphicsQueue();
-    mRenderPass = mVulkanCore.createSimpleRenderPass();
-    mFrameBuffers = mVulkanCore.createFrameBuffer(mRenderPass);
     createShaders();
     createMesh();
     createUniformBuffers();
@@ -238,24 +230,6 @@ void App::createCommandBuffers()
 
 void App::recordCommandBuffer()
 {
-
-    std::array<VkClearValue, 2> clearValue = {};
-    clearValue[0].color = {{0.0f, 1.0f, 0.0f, 1.0f}}; // green clear color
-    clearValue[1].depthStencil = {1.0f, 0};           // max depth
-
-    VkRenderPassBeginInfo renderPassBeginInfo = {.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-                                                 .pNext = nullptr,
-                                                 .renderPass = mRenderPass,
-                                                 .framebuffer = VK_NULL_HANDLE, // will be set later
-                                                 .renderArea = {.offset = {0, 0},
-                                                                .extent =
-                                                                    {
-                                                                        .width = 800,
-                                                                        .height = 600,
-                                                                    }},
-                                                 .clearValueCount = static_cast<uint32_t>(clearValue.size()),
-                                                 .pClearValues = clearValue.data()};
-
     mModel->createDescriptorSets(mGraphicsPipelineV2);
 
     for (uint32_t i = 0; i < mCommandBuffers.size(); ++i)
@@ -263,20 +237,18 @@ void App::recordCommandBuffer()
         // Begin command buffer recording
         VulkanCore::BeginCommandBuffer(mCommandBuffers[i], VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
 
-        // frame buffer specific info per command buffer
-        renderPassBeginInfo.framebuffer = mFrameBuffers[i];
-        vkCmdBeginRenderPass(mCommandBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-        // mGraphicsPipeline->bind(mCommandBuffers[i], i);
+        VulkanCore::imageMemBarrier(mCommandBuffers[i], mVulkanCore.getSwapchainImage(i),
+                                    mVulkanCore.getSwapchainSurfaceFormat(), VK_IMAGE_LAYOUT_UNDEFINED,
+                                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+        beginRendering(mCommandBuffers[i], i);
+
         mGraphicsPipelineV2->bind(mCommandBuffers[i]);
         mModel->recordCommandBuffer(mCommandBuffers[i], mGraphicsPipelineV2, i);
 
-        // uint32_t vertexCount = 9;
-        // uint32_t instanceCount = 1;
-        // uint32_t firstVertex = 0;
-        // uint32_t firstInstance = 0;
-        // vkCmdDraw(mCommandBuffers[i], vertexCount, instanceCount, firstVertex,
-        //           firstInstance);
-        vkCmdEndRenderPass(mCommandBuffers[i]);
+        vkCmdEndRendering(mCommandBuffers[i]);
+        VulkanCore::imageMemBarrier(mCommandBuffers[i], mVulkanCore.getSwapchainImage(i),
+                                    mVulkanCore.getSwapchainSurfaceFormat(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                    VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
         if (vkEndCommandBuffer(mCommandBuffers[i]) != VK_SUCCESS)
         {
@@ -309,9 +281,8 @@ void App::createPipeline()
 
     VkFormat depthFormat = mVulkanCore.getDepthFormat();
     VkFormat colorFormat = mVulkanCore.getSwapchainSurfaceFormat();
-    mGraphicsPipelineV2 =
-        new VulkanCore::GraphicsPipelineV2(mVulkanCore.getDevice(), mWindow, mRenderPass, mVSShaderModule,
-                                           mFSShaderModule, mNumImages, colorFormat, depthFormat);
+    mGraphicsPipelineV2 = new VulkanCore::GraphicsPipelineV2(mVulkanCore.getDevice(), mWindow, nullptr, mVSShaderModule,
+                                                             mFSShaderModule, mNumImages, colorFormat, depthFormat);
 }
 
 void App::createVertexBuffer()
@@ -392,6 +363,61 @@ void App::loadTexture()
 {
     mMesh.mTexture = new VulkanCore::Texture();
     mVulkanCore.createTexture("VulkanDemo/assets/wall.jpg", *(mMesh.mTexture));
+}
+
+void App::beginRendering(VkCommandBuffer commandBuffer, uint32_t imageIndex)
+{
+    VkClearValue clearColor = {.color = {0.0F, 0.0F, 0.0F, 1.0F}};
+    VkClearValue clearDepth = {.depthStencil = {1.0F, 0}};
+
+    VkRenderingAttachmentInfoKHR colorAttachment = {
+        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
+        .pNext = nullptr,
+        .imageView = mVulkanCore.getSwapchainImageView(imageIndex),
+        .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        .resolveMode = VK_RESOLVE_MODE_NONE,
+        .resolveImageView = VK_NULL_HANDLE,
+        .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+        .clearValue = clearColor,
+    };
+
+    VkRenderingAttachmentInfoKHR depthAttachment = {
+        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
+        .pNext = nullptr,
+        .imageView = mVulkanCore.getDepthImageView(imageIndex),
+        .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+        .resolveMode = VK_RESOLVE_MODE_NONE,
+        .resolveImageView = VK_NULL_HANDLE,
+        .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        .clearValue = clearDepth,
+    };
+
+    VkRenderingInfoKHR renderingInfo = {
+        .sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR,
+        .pNext = nullptr,
+        .flags = 0,
+        .renderArea =
+            {
+                .offset = {0, 0},
+                .extent =
+                    {
+                        static_cast<uint32_t>(mWindowWidth),
+                        static_cast<uint32_t>(mWindowHeight),
+                    },
+            },
+        .layerCount = 1,
+        .viewMask = 0,
+        .colorAttachmentCount = 1,
+        .pColorAttachments = &colorAttachment,
+        .pDepthAttachment = &depthAttachment,
+        .pStencilAttachment = nullptr,
+    };
+
+    vkCmdBeginRendering(commandBuffer, &renderingInfo);
 }
 
 } // namespace VulkanApp
