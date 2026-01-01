@@ -5,6 +5,7 @@ exports_files(["Core.cpp", "include/Core.h"])
 cc_library(
     name = "vulkan",
     linkopts = ["-lvulkan"],
+    includes = ["/opt/vulkansdk/1.4.304.1/x86_64/include"],
     visibility = ["//visibility:public"],
 )
 
