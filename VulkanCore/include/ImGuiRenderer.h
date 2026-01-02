@@ -12,7 +12,7 @@ namespace VulkanCore
 class ImGuiRenderer
 {
   public:
-    ImGuiRenderer(VulkanCore* vulkanCore);
+    ImGuiRenderer(VulkanCore* vulkanCore, int32_t width, int32_t height);
     ~ImGuiRenderer();
 
     void destroy();
@@ -26,8 +26,8 @@ class ImGuiRenderer
     void initImGui();
 
     VulkanCore* mVulkanCore;
-    int32_t mFramebufferWidth;
-    int32_t mFramebufferHeight;
+    int32_t mImGuiWidth;
+    int32_t mImGuiHeight;
 
     std::vector<VkCommandBuffer> mCommandBuffers;
     VkDescriptorPool mDescriptorPool;

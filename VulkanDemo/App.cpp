@@ -25,8 +25,9 @@ namespace VulkanApp
 
 App::App(int32_t width, int32_t height)
     : mWindow{nullptr}, mVulkanCore{}, mGraphicsQueue{nullptr}, mNumImages{0}, mCommandBuffers{},
-      mVSShaderModule{VK_NULL_HANDLE}, mFSShaderModule{VK_NULL_HANDLE}, mWindowWidth{width}, mWindowHeight{height},
-      mCamera{nullptr}, mGraphicsPipelineV2{nullptr}, mModel{nullptr}, mImGuiRenderer{nullptr}, mShowImGui{true},
+      mVSShaderModule{VK_NULL_HANDLE}, mFSShaderModule{VK_NULL_HANDLE}, mWindowWidth{width},
+      mWindowHeight{height}, mCamera{nullptr}, mGraphicsPipelineV2{nullptr}, mModel{nullptr}, mImGuiRenderer{nullptr},
+      mImGuiWidth{100}, mImGuiHeight{500}, mShowImGui{true},
       mClearColor{0.0f, 1.0f, 0.0f}, mPosition{0.0f, 0.0f, 0.0f}, mRotation{0.0f, 0.0f, 0.0f}, mScale{1.0f}
 {
 }
@@ -105,7 +106,7 @@ void App::init(std::string appName)
     recordCommandBuffer();
     defaultCreateCameraPers();
     VulkanCore::glfw_vulkan_set_callbacks(mWindow, this);
-    mImGuiRenderer = new VulkanCore::ImGuiRenderer(&mVulkanCore);
+    mImGuiRenderer = new VulkanCore::ImGuiRenderer(&mVulkanCore, mImGuiWidth, mImGuiHeight);
 }
 
 void App::renderScene()
@@ -423,8 +424,10 @@ void App::updateGUI()
     ImGui_ImplGlfw_NewFrame();   // Setup ImGui frame for GLFW
     ImGui::NewFrame();           // Start new ImGui frame
 
-    // Settings Window
-    ImGui::Begin("Settings", NULL, ImGuiWindowFlags_AlwaysAutoResize); // Create a window called "Settings"
+    // Settings Window - Set size and position
+    ImGui::SetNextWindowSize(ImVec2(mImGuiWidth, mImGuiHeight), ImGuiCond_FirstUseEver); // Set window size on first use
+    ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_FirstUseEver); // Set window position on first use
+    ImGui::Begin("Settings", NULL);                                  // Create a window called "Settings"
     ImGui::Text("This is some useful text.");
 
     static float f{0.0F};

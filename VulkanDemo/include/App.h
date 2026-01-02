@@ -73,6 +73,8 @@ class App : public VulkanCore::GLFWCallbacks
     VulkanCore::GraphicsPipelineV2* mGraphicsPipelineV2;
     VulkanCore::VulkanModel* mModel;
     VulkanCore::ImGuiRenderer* mImGuiRenderer;
+    int32_t mImGuiWidth, mImGuiHeight;
+
     bool mShowImGui;
     glm::vec3 mClearColor;
     glm::vec3 mPosition;

@@ -32,11 +32,10 @@ bool isMouseControlledByImGui()
 namespace VulkanCore
 {
 
-ImGuiRenderer::ImGuiRenderer(VulkanCore* vulkanCore)
-    : mVulkanCore{vulkanCore}, mFramebufferWidth{0}, mFramebufferHeight{0}, mCommandBuffers{}, mDescriptorPool{
-                                                                                                   VK_NULL_HANDLE}
+ImGuiRenderer::ImGuiRenderer(VulkanCore* vulkanCore, int32_t width, int32_t height)
+    : mVulkanCore{vulkanCore}, mImGuiWidth{width}, mImGuiHeight{height}, mCommandBuffers{}, mDescriptorPool{
+                                                                                                VK_NULL_HANDLE}
 {
-    mVulkanCore->getFramebufferSize(mFramebufferWidth, mFramebufferHeight);
     createDescriptorPool();
     initImGui();
 }
@@ -94,7 +93,7 @@ void ImGuiRenderer::initImGui()
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;    // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableSetMousePos; // Enable Mouse Controls
-    io.DisplaySize = ImVec2(static_cast<float>(mFramebufferWidth), static_cast<float>(mFramebufferHeight));
+    // Note: io.DisplaySize will be automatically set by ImGui_ImplGlfw_NewFrame()
 
     // Set global font scale instead of window font scale
     io.FontGlobalScale = 1.5f;
