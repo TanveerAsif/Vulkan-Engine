@@ -95,8 +95,27 @@ void ImGuiRenderer::initImGui()
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableSetMousePos; // Enable Mouse Controls
     // Note: io.DisplaySize will be automatically set by ImGui_ImplGlfw_NewFrame()
 
-    // Set global font scale instead of window font scale
-    io.FontGlobalScale = 1.5f;
+    // Option 1: Scale the default font (easy - just change the scale value)
+    // Values: 1.0 = normal, 1.5 = larger, 2.0 = very large, 0.8 = smaller
+    // io.FontGlobalScale = 1.8f;
+
+    // Option 2: Configure default font with better quality (recommended)
+    ImFontConfig fontConfig;
+    fontConfig.OversampleH = 3;   // Horizontal oversampling for sharper text
+    fontConfig.OversampleV = 2;   // Vertical oversampling
+    fontConfig.PixelSnapH = true; // Align to pixel boundaries
+    io.Fonts->AddFontDefault(&fontConfig);
+
+    // Option 3: Load a custom TrueType font (best quality)
+    // Download fonts from: https://fonts.google.com/
+    // Popular choices: Roboto, Inter, Open Sans, Lato
+    // Uncomment one of these:
+
+    // io.Fonts->AddFontFromFileTTF("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 18.0f);
+    // io.Fonts->AddFontFromFileTTF("VulkanDemo/assets/fonts/Roboto-Regular.ttf", 16.0f);
+
+    // Option 4: Use ImGui's built-in Cousine (monospace) font
+    // io.Fonts->AddFontFromMemoryCompressedTTF(ImGui::GetDefaultCompressedFontDataTTFBase85(), 16.0f);
 
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
