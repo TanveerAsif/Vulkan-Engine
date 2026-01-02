@@ -6,7 +6,6 @@
 #include <sys/types.h>
 #include <vector>
 #include <vulkan/vulkan_core.h>
-#include <xcb/xcb.h>
 #include <vulkan/vulkan_xcb.h>
 #include <xcb/xcb.h>
 
@@ -1037,7 +1036,7 @@ void VulkanCore::beginDynamicRendering(VkCommandBuffer commandBuffer, uint32_t i
         .resolveMode = VK_RESOLVE_MODE_NONE,
         .resolveImageView = VK_NULL_HANDLE,
         .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .loadOp = clearColor ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
         //.clearValue = *clearColor,
     };
@@ -1054,7 +1053,7 @@ void VulkanCore::beginDynamicRendering(VkCommandBuffer commandBuffer, uint32_t i
         .resolveMode = VK_RESOLVE_MODE_NONE,
         .resolveImageView = VK_NULL_HANDLE,
         .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .loadOp = clearDepth ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD,
         .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
         //.clearValue = *clearDepth,
     };
