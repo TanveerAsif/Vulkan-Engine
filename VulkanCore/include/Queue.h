@@ -40,10 +40,11 @@ class VulkanQueue
     std::vector<VkSemaphore> mRenderCompleteSemaphores; // Signals when rendering is complete
     std::vector<VkSemaphore> mImageAvailableSemaphores; // Signals when an image is available for rendering
     std::vector<VkFence> mInFlightFences;               // Fences to ensure that command buffers have finished executing
+    std::vector<VkFence> mImagesInFlightFences;         // Fences to track images in flight
 
     uint32_t mNumberOfSwapchainImages; // Number of images in the swapchain
     uint32_t mAcquiredImageIndex;      // Index of the last acquired swapchain image
-    uint32_t mFrameIndex;              // Index of the current frame
+    uint32_t mFrameIndex;              // rotating frame index 0..N-1 for sync objects
 };
 
 } // namespace VulkanCore

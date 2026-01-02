@@ -18,6 +18,7 @@ cc_library(
         "ImGui/imgui.h",
     ],
     includes = ["ImGui"],
+    defines = ["IMGUI_USE_WCHAR32"],  # Enable 32-bit character support for emoji
     visibility = ["//visibility:public"],
 )
 

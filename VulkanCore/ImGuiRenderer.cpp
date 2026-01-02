@@ -95,31 +95,103 @@ void ImGuiRenderer::initImGui()
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableSetMousePos; // Enable Mouse Controls
     // Note: io.DisplaySize will be automatically set by ImGui_ImplGlfw_NewFrame()
 
-    // Option 1: Scale the default font (easy - just change the scale value)
-    // Values: 1.0 = normal, 1.5 = larger, 2.0 = very large, 0.8 = smaller
-    // io.FontGlobalScale = 1.8f;
-
-    // Option 2: Configure default font with better quality (recommended)
+    // Load fonts with emoji support
     ImFontConfig fontConfig;
     fontConfig.OversampleH = 3;   // Horizontal oversampling for sharper text
     fontConfig.OversampleV = 2;   // Vertical oversampling
     fontConfig.PixelSnapH = true; // Align to pixel boundaries
     io.Fonts->AddFontDefault(&fontConfig);
 
-    // Option 3: Load a custom TrueType font (best quality)
-    // Download fonts from: https://fonts.google.com/
-    // Popular choices: Roboto, Inter, Open Sans, Lato
-    // Uncomment one of these:
+    // Add emoji support by merging emoji font
+    // With IMGUI_USE_WCHAR32, we can now support full emoji range
+    // Note: Color emoji fonts (NotoColorEmoji) use COLR/CPAL tables which stb_truetype doesn't support
+    // We need traditional TrueType outline fonts like Symbola
+    const char* emojiPaths[] = {"/usr/share/fonts/truetype/ancient-scripts/Symbola_hint.ttf",
+                                "/usr/share/fonts/TTF/Symbola.ttf",
+                                "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",      // Good symbol coverage
+                                "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf"}; // Fallback
 
-    // io.Fonts->AddFontFromFileTTF("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 18.0f);
-    // io.Fonts->AddFontFromFileTTF("VulkanDemo/assets/fonts/Roboto-Regular.ttf", 16.0f);
+    bool emojiLoaded = false;
+    for (const char* path : emojiPaths)
+    {
+        FILE* file = fopen(path, "rb");
+        if (file)
+        {
+            fclose(file);
+            ImFontConfig emojiConfig;
+            emojiConfig.MergeMode = true;
+            emojiConfig.OversampleH = 1;
+            emojiConfig.OversampleV = 1;
+            emojiConfig.GlyphMinAdvanceX = 16.0f;
+
+            // Full emoji ranges now supported with IMGUI_USE_WCHAR32
+            static const ImWchar ranges[] = {
+                0x2190,  0x21FF,  // Arrows
+                0x2600,  0x26FF,  // Miscellaneous Symbols (includes basic emoji-like symbols)
+                0x2700,  0x27BF,  // Dingbats
+                0x1F300, 0x1F5FF, // Miscellaneous Symbols and Pictographs
+                0x1F600, 0x1F64F, // Emoticons
+                0x1F680, 0x1F6FF, // Transport and Map Symbols
+                0x1F900, 0x1F9FF, // Supplemental Symbols and Pictographs
+                0};
+
+            // Try to add font - may return nullptr if incompatible format
+            ImFont* result = io.Fonts->AddFontFromFileTTF(path, 16.0f, &emojiConfig, ranges);
+            if (result != nullptr)
+            {
+                emojiLoaded = true;
+                std::cout << "Symbol/Emoji font loaded from: " << path << std::endl;
+                break;
+            }
+            else
+            {
+                std::cout << "Warning: Font at " << path << " could not be loaded (incompatible format)" << std::endl;
+            }
+        }
+    }
+
+    if (!emojiLoaded)
+    {
+        std::cout << "Warning: No compatible emoji font found. Emojis will display as boxes." << std::endl;
+        std::cout << "Note: Install 'fonts-symbola' package for better emoji support." << std::endl;
+    }
+
+    // Note: Don't call io.Fonts->Build() manually with modern backends!
+    // The Vulkan backend (ImGuiBackendFlags_RendererHasTextures) handles font atlas building automatically
 
     // Option 4: Use ImGui's built-in Cousine (monospace) font
     // io.Fonts->AddFontFromMemoryCompressedTTF(ImGui::GetDefaultCompressedFontDataTTFBase85(), 16.0f);
 
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
-    // ImGui::StyleColorsClassic();
+
+    // Customize colors for darker blue/custom theme
+    ImGuiStyle& style = ImGui::GetStyle();
+    ImVec4* colors = style.Colors;
+
+    // Window background - very dark blue
+    colors[ImGuiCol_WindowBg] = ImVec4(0.06f, 0.08f, 0.12f, 0.94f);
+    colors[ImGuiCol_ChildBg] = ImVec4(0.07f, 0.09f, 0.13f, 1.00f);
+
+    // Title bar - darker blue
+    colors[ImGuiCol_TitleBg] = ImVec4(0.04f, 0.06f, 0.10f, 1.00f);
+    colors[ImGuiCol_TitleBgActive] = ImVec4(0.10f, 0.15f, 0.25f, 1.00f);
+    colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.04f, 0.06f, 0.10f, 0.75f);
+
+    // Headers - medium dark blue
+    colors[ImGuiCol_Header] = ImVec4(0.15f, 0.20f, 0.30f, 0.80f);
+    colors[ImGuiCol_HeaderHovered] = ImVec4(0.20f, 0.25f, 0.35f, 0.80f);
+    colors[ImGuiCol_HeaderActive] = ImVec4(0.25f, 0.30f, 0.40f, 1.00f);
+
+    // Frame background (for sliders, inputs, etc.)
+    colors[ImGuiCol_FrameBg] = ImVec4(0.10f, 0.12f, 0.16f, 1.00f);
+    colors[ImGuiCol_FrameBgHovered] = ImVec4(0.15f, 0.17f, 0.22f, 1.00f);
+    colors[ImGuiCol_FrameBgActive] = ImVec4(0.20f, 0.22f, 0.27f, 1.00f);
+
+    // Buttons
+    colors[ImGuiCol_Button] = ImVec4(0.15f, 0.20f, 0.30f, 1.00f);
+    colors[ImGuiCol_ButtonHovered] = ImVec4(0.20f, 0.25f, 0.35f, 1.00f);
+    colors[ImGuiCol_ButtonActive] = ImVec4(0.25f, 0.30f, 0.40f, 1.00f);
 
     bool installGLFWCallbacks = true;
     ImGui_ImplGlfw_InitForVulkan(mVulkanCore->getWindow(), installGLFWCallbacks);
