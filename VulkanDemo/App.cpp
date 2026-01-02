@@ -133,16 +133,29 @@ void App::run()
 {
     float_t currentTime = glfwGetTime();
 
+    uint32_t frameCount = 0;
+    float_t fpsTime{0.0F};
     while (!glfwWindowShouldClose(mWindow))
     {
         float_t newTime = glfwGetTime();
         float_t deltaTime = newTime - currentTime;
-        currentTime = newTime;
+
         mCamera->setTick(deltaTime);
         mCamera->process();
 
         renderScene();
         glfwPollEvents();
+
+        currentTime = newTime;
+
+        frameCount++;
+        fpsTime += deltaTime;
+        if (fpsTime >= 1.0F)
+        {
+            glfwSetWindowTitle(mWindow, const_cast<char*>(("Vulkan FPS: " + std::to_string(frameCount)).c_str()));
+            frameCount = 0;
+            fpsTime -= 1.0F; // Subtract 1 second instead of resetting to preserve accuracy
+        }
     }
 
     glfwTerminate();

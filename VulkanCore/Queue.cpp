@@ -1,6 +1,7 @@
 #include "Queue.h"
 #include "Wrapper.h"
 #include <cassert>
+#include <cstdint>
 #include <iostream>
 #include <vulkan/vulkan_core.h>
 
@@ -44,6 +45,7 @@ void VulkanQueue::createSyncObjects()
     mRenderCompleteSemaphores.resize(mNumberOfSwapchainImages);
     mImageAvailableSemaphores.resize(mNumberOfSwapchainImages);
     mInFlightFences.resize(mNumberOfSwapchainImages);
+    mImagesInFlightFences.resize(mNumberOfSwapchainImages, VK_NULL_HANDLE);
 
     for (VkSemaphore& Sem : mImageAvailableSemaphores)
     {
@@ -90,9 +92,16 @@ void VulkanQueue::destroySemaphores()
         vkDestroyFence(mDevice, Fence, nullptr);
     }
 
+    for (VkFence& Fence : mImagesInFlightFences)
+    {
+        vkWaitForFences(mDevice, 1, &Fence, VK_TRUE, UINT64_MAX);
+        vkDestroyFence(mDevice, Fence, nullptr);
+    }
+
     mImageAvailableSemaphores.clear();
     mRenderCompleteSemaphores.clear();
     mInFlightFences.clear();
+    mImagesInFlightFences.clear();
 }
 
 uint32_t VulkanQueue::acquireNextImage()
@@ -100,17 +109,21 @@ uint32_t VulkanQueue::acquireNextImage()
     vkWaitForFences(mDevice, 1, &mInFlightFences[mFrameIndex], VK_TRUE, UINT64_MAX);
     vkResetFences(mDevice, 1, &mInFlightFences[mFrameIndex]);
 
-    VkResult result =
-        vkAcquireNextImageKHR(mDevice, mSwapchain,
+    uint32_t imageIndex;
+    if (vkAcquireNextImageKHR(mDevice, mSwapchain,
                               UINT64_MAX, // timeout, waiting indefinitely
-                              mImageAvailableSemaphores[mFrameIndex], VK_NULL_HANDLE, &mAcquiredImageIndex);
-
-    if (result != VK_SUCCESS)
+                              mImageAvailableSemaphores[mFrameIndex], VK_NULL_HANDLE, &imageIndex) != VK_SUCCESS)
     {
         throw std::runtime_error("Failed to acquire next image from swapchain.");
     }
+    if ((mImagesInFlightFences[imageIndex] != VK_NULL_HANDLE) &&
+        (mImagesInFlightFences[imageIndex] != mInFlightFences[mFrameIndex]))
+    {
+        vkWaitForFences(mDevice, 1, &mImagesInFlightFences[imageIndex], VK_TRUE, UINT64_MAX);
+    }
+    mImagesInFlightFences[imageIndex] = mInFlightFences[mFrameIndex];
 
-    return mAcquiredImageIndex;
+    return imageIndex;
 }
 
 void VulkanQueue::waitIdle()
@@ -161,7 +174,7 @@ void VulkanQueue::submitAsync(VkCommandBuffer* commandBuffer, uint32_t numOfComm
                                .commandBufferCount = numOfCommandBuffers,
                                .pCommandBuffers = commandBuffer,
                                .signalSemaphoreCount = 1,
-                               .pSignalSemaphores = &mRenderCompleteSemaphores[mAcquiredImageIndex]};
+                               .pSignalSemaphores = &mRenderCompleteSemaphores[mFrameIndex]};
 
     if (vkQueueSubmit(mQueue, 1, &submitInfo, mInFlightFences[mFrameIndex]) != VK_SUCCESS)
     {
@@ -171,17 +184,17 @@ void VulkanQueue::submitAsync(VkCommandBuffer* commandBuffer, uint32_t numOfComm
 
 void VulkanQueue::presentImage(uint32_t imageIndex)
 {
-    assert(imageIndex == mAcquiredImageIndex); // Ensure the image index matches the acquired image index
+    // assert(imageIndex == mAcquiredImageIndex); // Ensure the image index matches the acquired image index
 
-    VkPresentInfoKHR presentInfo = {
-        .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-        .pNext = nullptr,
-        .waitSemaphoreCount = 1,
-        .pWaitSemaphores = &mRenderCompleteSemaphores[mAcquiredImageIndex], // Wait until rendering is complete
-        .swapchainCount = 1,
-        .pSwapchains = &mSwapchain,
-        .pImageIndices = &imageIndex,
-        .pResults = nullptr};
+    VkPresentInfoKHR presentInfo = {.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+                                    .pNext = nullptr,
+                                    .waitSemaphoreCount = 1,
+                                    .pWaitSemaphores =
+                                        &mRenderCompleteSemaphores[mFrameIndex], // Wait until rendering is complete
+                                    .swapchainCount = 1,
+                                    .pSwapchains = &mSwapchain,
+                                    .pImageIndices = &imageIndex,
+                                    .pResults = nullptr};
 
     VkResult result = vkQueuePresentKHR(mQueue, &presentInfo);
     if (result != VK_SUCCESS)
