@@ -92,11 +92,8 @@ void VulkanQueue::destroySemaphores()
         vkDestroyFence(mDevice, Fence, nullptr);
     }
 
-    for (VkFence& Fence : mImagesInFlightFences)
-    {
-        vkWaitForFences(mDevice, 1, &Fence, VK_TRUE, UINT64_MAX);
-        vkDestroyFence(mDevice, Fence, nullptr);
-    }
+    // Note: mImagesInFlightFences contains references to fences in mInFlightFences (or VK_NULL_HANDLE)
+    // They are not separate fence objects, so don't wait on or destroy them
 
     mImageAvailableSemaphores.clear();
     mRenderCompleteSemaphores.clear();

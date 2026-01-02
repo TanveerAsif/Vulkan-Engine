@@ -436,70 +436,175 @@ void App::updateGUI()
     ImGui::NewFrame();           // Start new ImGui frame
 
     // Settings Window - Set size and position
-    ImGui::SetNextWindowSize(ImVec2(mImGuiWidth, mImGuiHeight), ImGuiCond_FirstUseEver); // Set window size on first use
-    ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_FirstUseEver); // Set window position on first use
-    ImGui::Begin("Settings", NULL);                                  // Create a window called "Settings"
-    ImGui::Text("This is some useful text.");
+    ImGui::SetNextWindowSize(ImVec2(mImGuiWidth, mImGuiHeight), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_FirstUseEver);
+
+    // Add window flags for better appearance
+    ImGuiWindowFlags windowFlags = ImGuiWindowFlags_None;
+    // windowFlags |= ImGuiWindowFlags_MenuBar;  // Uncomment to add menu bar
+
+    ImGui::Begin("🎮 Control Panel", NULL, windowFlags);
+
+    // Add FPS display with color coding
+    ImGuiIO& io = ImGui::GetIO();
+    float fps = io.Framerate;
+    ImVec4 fpsColor = fps > 60.0f ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) :     // Green
+                          fps > 30.0f ? ImVec4(1.0f, 1.0f, 0.0f, 1.0f) : // Yellow
+                              ImVec4(1.0f, 0.0f, 0.0f, 1.0f);            // Red
+    ImGui::TextColored(fpsColor, "FPS: %.1f (%.2f ms)", fps, 1000.0f / fps);
 
     ImGui::Separator();
+    ImGui::Spacing();
 
-    ImGui::BeginGroup();
+    // Transform Controls with icons and better layout
+    if (ImGui::CollapsingHeader("📍 Position", ImGuiTreeNodeFlags_DefaultOpen))
     {
-        // ImGui::Begin("Transform");
-        if (ImGui::CollapsingHeader("Position"))
-        {
-            ImGui::SliderFloat("PosX", &mPosition.x, 0.0F, 100.0F);
-            ImGui::SliderFloat("PosY", &mPosition.y, 0.0F, 100.0F);
-            ImGui::SliderFloat("PosZ", &mPosition.z, 0.0F, 100.0F);
-            if (ImGui::Button("Reset Position"))
-            {
-                mPosition = glm::vec3(0.0f, 0.0f, 0.0f);
-            }
-        }
+        ImGui::PushItemWidth(-100); // Make sliders wider
 
-        if (ImGui::CollapsingHeader("Rotation"))
-        {
-            ImGui::SliderFloat("RotX", &mRotation.x, 0.0F, glm::two_pi<float_t>());
-            ImGui::SliderFloat("RotY", &mRotation.y, 0.0F, glm::two_pi<float_t>());
-            ImGui::SliderFloat("RotZ", &mRotation.z, 0.0F, glm::two_pi<float_t>());
-            if (ImGui::Button("Reset Rotation"))
-            {
-                mRotation = glm::vec3(0.0f, 0.0f, 0.0f);
-            }
-        }
-        if (ImGui::CollapsingHeader("Scaling"))
-        {
-            ImGui::SliderFloat("Down", &mScale, 0.1f, 1.0f);
-            ImGui::SliderFloat("Up", &mScale, 1.0f, 10.0f);
-            if (ImGui::Button("Reset Scale"))
-            {
-                mScale = 1.0f;
-            }
-        }
-        if (ImGui::CollapsingHeader("Camera"))
-        {
-            float_t cameraSpeed = mCamera->getSpeed();
-            ImGui::SliderFloat("Camera Speed", &cameraSpeed, 1.0F, 100.0F);
-            mCamera->setSpeed(cameraSpeed);
+        // Use DragFloat for finer control
+        ImGui::Text("X:");
+        ImGui::SameLine(50);
+        ImGui::DragFloat("##PosX", &mPosition.x, 0.1f, -100.0f, 100.0f, "%.2f");
 
-            if (ImGui::Button("Reset"))
-            {
-                mCamera->setPosition(glm::vec3(0.0f, 0.0f, -50.0f));
-                mCamera->setYaw(0.0f);
-                mCamera->setPitch(0.0f);
-                mCamera->setRoll(0.0f);
-                mCamera->setSpeed(10.0f);
-                mCamera->process();
-            }
+        ImGui::Text("Y:");
+        ImGui::SameLine(50);
+        ImGui::DragFloat("##PosY", &mPosition.y, 0.1f, -100.0f, 100.0f, "%.2f");
+
+        ImGui::Text("Z:");
+        ImGui::SameLine(50);
+        ImGui::DragFloat("##PosZ", &mPosition.z, 0.1f, -100.0f, 100.0f, "%.2f");
+
+        ImGui::PopItemWidth();
+
+        // Color-coded reset button
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.3f, 0.3f, 0.6f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.4f, 0.4f, 0.8f));
+        if (ImGui::Button("🔄 Reset Position", ImVec2(-1, 0)))
+        {
+            mPosition = glm::vec3(0.0f, 0.0f, 0.0f);
         }
+        ImGui::PopStyleColor(2);
     }
-    ImGui::EndGroup();
 
-    // imGuiIZMO : 3D axis and gizmo manipulation can be added here if needed
+    if (ImGui::CollapsingHeader("🔄 Rotation"))
+    {
+        ImGui::PushItemWidth(-100);
 
-    ImGui::End(); // End Transform window
+        // Convert to degrees for better user experience
+        float degX = glm::degrees(mRotation.x);
+        float degY = glm::degrees(mRotation.y);
+        float degZ = glm::degrees(mRotation.z);
 
-    ImGui::Render(); // Finalize the ImGui frame
+        ImGui::Text("X:");
+        ImGui::SameLine(50);
+        if (ImGui::SliderAngle("##RotX", &mRotation.x, 0.0f, 360.0f))
+            mRotation.x = glm::radians(glm::mod(glm::degrees(mRotation.x), 360.0f));
+
+        ImGui::Text("Y:");
+        ImGui::SameLine(50);
+        if (ImGui::SliderAngle("##RotY", &mRotation.y, 0.0f, 360.0f))
+            mRotation.y = glm::radians(glm::mod(glm::degrees(mRotation.y), 360.0f));
+
+        ImGui::Text("Z:");
+        ImGui::SameLine(50);
+        if (ImGui::SliderAngle("##RotZ", &mRotation.z, 0.0f, 360.0f))
+            mRotation.z = glm::radians(glm::mod(glm::degrees(mRotation.z), 360.0f));
+
+        ImGui::PopItemWidth();
+
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.3f, 0.3f, 0.8f, 0.6f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.4f, 0.4f, 1.0f, 0.8f));
+        if (ImGui::Button("🏠 Reset Rotation", ImVec2(-1, 0)))
+        {
+            mRotation = glm::vec3(0.0f, 0.0f, 0.0f);
+        }
+        ImGui::PopStyleColor(2);
+    }
+
+    if (ImGui::CollapsingHeader("📏 Scale"))
+    {
+        ImGui::PushItemWidth(-1);
+
+        // Single unified scale slider with visual feedback
+        ImGui::SliderFloat("##Scale", &mScale, 0.1f, 10.0f, "%.2fx", ImGuiSliderFlags_Logarithmic);
+
+        // Visual scale indicator
+        ImGui::ProgressBar((mScale - 0.1f) / 9.9f, ImVec2(-1, 0), "");
+
+        ImGui::PopItemWidth();
+
+        // Quick scale presets
+        ImGui::Text("Presets:");
+        if (ImGui::Button("0.5x", ImVec2(60, 0)))
+            mScale = 0.5f;
+        ImGui::SameLine();
+        if (ImGui::Button("1.0x", ImVec2(60, 0)))
+            mScale = 1.0f;
+        ImGui::SameLine();
+        if (ImGui::Button("2.0x", ImVec2(60, 0)))
+            mScale = 2.0f;
+        ImGui::SameLine();
+        if (ImGui::Button("5.0x", ImVec2(60, 0)))
+            mScale = 5.0f;
+
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.3f, 0.8f, 0.3f, 0.6f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.4f, 1.0f, 0.4f, 0.8f));
+        if (ImGui::Button("🔄 Reset Scale", ImVec2(-1, 0)))
+        {
+            mScale = 1.0f;
+        }
+        ImGui::PopStyleColor(2);
+    }
+
+    if (ImGui::CollapsingHeader("📷 Camera"))
+    {
+        float_t cameraSpeed = mCamera->getSpeed();
+        ImGui::PushItemWidth(-1);
+
+        ImGui::Text("Speed:");
+        ImGui::SliderFloat("##CameraSpeed", &cameraSpeed, 1.0F, 100.0F, "%.1f");
+        mCamera->setSpeed(cameraSpeed);
+
+        ImGui::Spacing();
+
+        // Camera info display
+        glm::vec3 camPos = mCamera->getPosition();
+        ImGui::TextColored(ImVec4(0.6f, 0.8f, 1.0f, 1.0f), "Position: (%.1f, %.1f, %.1f)", camPos.x, camPos.y,
+                           camPos.z);
+
+        ImGui::PopItemWidth();
+
+        ImGui::Spacing();
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.6f, 0.2f, 0.6f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.8f, 0.3f, 0.8f));
+        if (ImGui::Button("🏠 Reset Camera", ImVec2(-1, 0)))
+        {
+            mCamera->setPosition(glm::vec3(0.0f, 0.0f, -50.0f));
+            mCamera->setYaw(0.0f);
+            mCamera->setPitch(0.0f);
+            mCamera->setRoll(0.0f);
+            mCamera->setSpeed(10.0f);
+            mCamera->process();
+        }
+        ImGui::PopStyleColor(2);
+    }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+
+    // Help section
+    if (ImGui::CollapsingHeader("❓ Help"))
+    {
+        ImGui::BulletText("WASD/Arrows: Move camera");
+        ImGui::BulletText("Mouse: Look around");
+        ImGui::BulletText("Page Up/Down: Move up/down");
+        ImGui::BulletText("Space: Toggle UI");
+        ImGui::BulletText("ESC: Exit");
+    }
+
+    ImGui::End();
+
+    ImGui::Render();
 }
 
 } // namespace VulkanApp
