@@ -164,7 +164,34 @@ void ImGuiRenderer::initImGui()
 
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
-    // ImGui::StyleColorsClassic();
+
+    // Customize colors for darker blue/custom theme
+    ImGuiStyle& style = ImGui::GetStyle();
+    ImVec4* colors = style.Colors;
+
+    // Window background - very dark blue
+    colors[ImGuiCol_WindowBg] = ImVec4(0.06f, 0.08f, 0.12f, 0.94f);
+    colors[ImGuiCol_ChildBg] = ImVec4(0.07f, 0.09f, 0.13f, 1.00f);
+
+    // Title bar - darker blue
+    colors[ImGuiCol_TitleBg] = ImVec4(0.04f, 0.06f, 0.10f, 1.00f);
+    colors[ImGuiCol_TitleBgActive] = ImVec4(0.10f, 0.15f, 0.25f, 1.00f);
+    colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.04f, 0.06f, 0.10f, 0.75f);
+
+    // Headers - medium dark blue
+    colors[ImGuiCol_Header] = ImVec4(0.15f, 0.20f, 0.30f, 0.80f);
+    colors[ImGuiCol_HeaderHovered] = ImVec4(0.20f, 0.25f, 0.35f, 0.80f);
+    colors[ImGuiCol_HeaderActive] = ImVec4(0.25f, 0.30f, 0.40f, 1.00f);
+
+    // Frame background (for sliders, inputs, etc.)
+    colors[ImGuiCol_FrameBg] = ImVec4(0.10f, 0.12f, 0.16f, 1.00f);
+    colors[ImGuiCol_FrameBgHovered] = ImVec4(0.15f, 0.17f, 0.22f, 1.00f);
+    colors[ImGuiCol_FrameBgActive] = ImVec4(0.20f, 0.22f, 0.27f, 1.00f);
+
+    // Buttons
+    colors[ImGuiCol_Button] = ImVec4(0.15f, 0.20f, 0.30f, 1.00f);
+    colors[ImGuiCol_ButtonHovered] = ImVec4(0.20f, 0.25f, 0.35f, 1.00f);
+    colors[ImGuiCol_ButtonActive] = ImVec4(0.25f, 0.30f, 0.40f, 1.00f);
 
     bool installGLFWCallbacks = true;
     ImGui_ImplGlfw_InitForVulkan(mVulkanCore->getWindow(), installGLFWCallbacks);
