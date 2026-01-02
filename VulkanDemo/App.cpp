@@ -167,7 +167,7 @@ void App::onKeyEvent(GLFWwindow* window, int key, int scancode, int action, int 
         mCamera->setSpeed(100.0f);
     }
 
-    float_t _fTick = mCamera->getTick();
+    float_t _fTick = 1.0F; // mCamera->getTick();
     float_t _fSpeed = mCamera->getSpeed();
     float_t _fRotSpeed = mCamera->getRotSpeed();
     // Move Up
@@ -341,12 +341,10 @@ void App::updateUniformBuffer(uint32_t currentImage)
     glm::mat4 rotationY = glm::rotate(glm::mat4(1.0f), mRotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
     glm::mat4 rotationZ = glm::rotate(glm::mat4(1.0f), mRotation.z, glm::vec3(0.0f, 0.0f, 1.0f));
     glm::mat4 rotation = rotationZ * rotationY * rotationX;
-    glm::mat4 rotation2 =
-        glm::rotate(rotation, glm::radians(180.0F), glm::normalize(glm::vec3(1.0F, 0.0F, 0.0F))); // Hack
 
     glm::mat4 translation = glm::translate(glm::mat4(1.0f), mPosition);
 
-    glm::mat4 modelMatrix = translation * rotation2 * scale; // No additional transformations
+    glm::mat4 modelMatrix = translation * rotation * scale;
     glm::mat4 vp = mCamera->getVPMatrix();
     mModel->update(currentImage, vp * modelMatrix);
 }
@@ -463,6 +461,22 @@ void App::updateGUI()
             if (ImGui::Button("Reset Scale"))
             {
                 mScale = 1.0f;
+            }
+        }
+        if (ImGui::CollapsingHeader("Camera"))
+        {
+            float_t cameraSpeed = mCamera->getSpeed();
+            ImGui::SliderFloat("Camera Speed", &cameraSpeed, 1.0F, 100.0F);
+            mCamera->setSpeed(cameraSpeed);
+
+            if (ImGui::Button("Reset"))
+            {
+                mCamera->setPosition(glm::vec3(0.0f, 0.0f, -50.0f));
+                mCamera->setYaw(0.0f);
+                mCamera->setPitch(0.0f);
+                mCamera->setRoll(0.0f);
+                mCamera->setSpeed(10.0f);
+                mCamera->process();
             }
         }
     }
