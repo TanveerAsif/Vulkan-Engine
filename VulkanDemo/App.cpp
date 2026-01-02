@@ -430,38 +430,43 @@ void App::updateGUI()
     static float f{0.0F};
     ImGui::SliderFloat("Float Slider", &f, 0.0F, 1.0F);
     ImGui::ColorEdit3("Clear Color", (float*)&mClearColor);
-    ImGui::End(); // End Settings window
+    // ImGui::End(); // End Settings window
 
+    ImGui::Separator();
     // Transform Window
-    ImGui::Begin("Transform");
-    if (ImGui::CollapsingHeader("Position"))
+    ImGui::BeginGroup();
     {
-        ImGui::DragFloat3("Position", &mPosition.x, 0.01f);
-        ImGui::SameLine();
-        if (ImGui::Button("Reset Position"))
+        // ImGui::Begin("Transform");
+        if (ImGui::CollapsingHeader("Position"))
         {
-            mPosition = glm::vec3(0.0f, 0.0f, 0.0f);
+            ImGui::DragFloat3("Position", &mPosition.x, 0.01f);
+            ImGui::SameLine();
+            if (ImGui::Button("Reset Position"))
+            {
+                mPosition = glm::vec3(0.0f, 0.0f, 0.0f);
+            }
         }
-    }
 
-    if (ImGui::CollapsingHeader("Rotation"))
-    {
-        ImGui::DragFloat3("Rotation", &mRotation.x, 0.01f);
-        ImGui::SameLine();
-        if (ImGui::Button("Reset Rotation"))
+        if (ImGui::CollapsingHeader("Rotation"))
         {
-            mRotation = glm::vec3(0.0f, 0.0f, 0.0f);
+            ImGui::DragFloat3("Rotation", &mRotation.x, 0.01f);
+            ImGui::SameLine();
+            if (ImGui::Button("Reset Rotation"))
+            {
+                mRotation = glm::vec3(0.0f, 0.0f, 0.0f);
+            }
+        }
+        if (ImGui::CollapsingHeader("Scaling"))
+        {
+            ImGui::DragFloat("Scale", &mScale, 0.01f);
+            ImGui::SameLine();
+            if (ImGui::Button("Reset Scale"))
+            {
+                mScale = 1.0f;
+            }
         }
     }
-    if (ImGui::CollapsingHeader("Scale"))
-    {
-        ImGui::DragFloat("Scale", &mScale, 0.01f);
-        ImGui::SameLine();
-        if (ImGui::Button("Reset Scale"))
-        {
-            mScale = 1.0f;
-        }
-    }
+    ImGui::EndGroup();
 
     // imGuiIZMO : 3D axis and gizmo manipulation can be added here if needed
 
