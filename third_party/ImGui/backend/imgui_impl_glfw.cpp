@@ -313,7 +313,8 @@ static bool ImGui_ImplGlfw_IsWayland()
 #if !GLFW_HAS_WAYLAND
     return false;
 #elif GLFW_HAS_GETPLATFORM
-    return glfwGetPlatform() == GLFW_PLATFORM_WAYLAND;
+    // return glfwGetPlatform() == GLFW_PLATFORM_WAYLAND;  // Commented out due to header/library version mismatch
+    return false; // Fallback to non-Wayland
 #else
     const char* version = glfwGetVersionString();
     if (strstr(version, "Wayland") == NULL) // e.g. Ubuntu 22.04 ships with GLFW 3.3.6 compiled without Wayland

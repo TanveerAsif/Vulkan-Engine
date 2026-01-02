@@ -446,9 +446,9 @@ void App::updateGUI()
 
         if (ImGui::CollapsingHeader("Rotation"))
         {
-            ImGui::SliderFloat("RotX", &mRotation.x, 0.0F, 3.14F);
-            ImGui::SliderFloat("RotY", &mRotation.y, 0.0F, 3.14F);
-            ImGui::SliderFloat("RotZ", &mRotation.z, 0.0F, 3.14F);
+            ImGui::SliderFloat("RotX", &mRotation.x, 0.0F, glm::two_pi<float_t>());
+            ImGui::SliderFloat("RotY", &mRotation.y, 0.0F, glm::two_pi<float_t>());
+            ImGui::SliderFloat("RotZ", &mRotation.z, 0.0F, glm::two_pi<float_t>());
             if (ImGui::Button("Reset Rotation"))
             {
                 mRotation = glm::vec3(0.0f, 0.0f, 0.0f);

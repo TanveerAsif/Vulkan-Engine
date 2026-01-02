@@ -11,7 +11,6 @@ cc_binary(
         "@glm//:glm",
         "//third_party:imgui",
     ],
-    copts = ["-I/usr/local/include"],  # Use GLFW 3.4 headers
-    linkopts = ["/usr/local/lib/libglfw3.a", "-ldl", "-lpthread", "-lX11"],
+    linkopts = ["-lglfw", "-ldl", "-lpthread", "-lX11"],
     data = glob(["shaders/*"]),
 )

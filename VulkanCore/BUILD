@@ -4,18 +4,12 @@ exports_files(["Core.cpp", "include/Core.h"])
 
 cc_library(
     name = "vulkan",
-    linkopts = [
-        "/opt/vulkansdk/1.4.304.1/x86_64/lib/libvulkan.so",
-        "-Wl,-rpath,/opt/vulkansdk/1.4.304.1/x86_64/lib",
-    ],
-    copts = ["-isystem/opt/vulkansdk/1.4.304.1/x86_64/include"],
     visibility = ["//visibility:public"],
 )
 
 cc_library(
     name = "shaderc",
     linkopts = ["-lshaderc_shared"],
-    copts = ["-isystem/opt/vulkansdk/1.4.304.1/x86_64/include"],
     visibility = ["//visibility:public"],
 )
 
@@ -58,8 +52,6 @@ cc_library(
         "//third_party:stb_image",
         "//third_party:imgui",
     ],
-    copts = ["-I/usr/local/include"],  # Use GLFW 3.4 headers
-    linkopts = ["/usr/local/lib/libglfw3.a"],  # Use GLFW 3.4 static library
     visibility = ["//visibility:public"],
 )
 #sudo apt-get install glslang-dev glslang-tools
