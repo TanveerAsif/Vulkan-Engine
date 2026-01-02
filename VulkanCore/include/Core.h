@@ -83,6 +83,34 @@ class VulkanCore
     VkImageView getSwapchainImageView(uint32_t index) const;
     VkImageView getDepthImageView(uint32_t index) const;
 
+    VkInstance getVulkanInstance() const
+    {
+        return mVulkanInstance;
+    }
+
+    uint32_t getQueueFamilyIndex() const
+    {
+        return mQueueFamilyIndex;
+    }
+
+    PhysicalDevice getPhysicalDevice() const
+    {
+        return mPhysicalDevice;
+    }
+
+    void beginDynamicRendering(VkCommandBuffer commandBuffer, uint32_t imageIndex, VkClearValue* clearColor,
+                               VkClearValue* clearDepth);
+
+    GLFWwindow* getWindow() const
+    {
+        return mWindow;
+    }
+
+    void getFramebufferSize(int& width, int& height) const
+    {
+        glfwGetFramebufferSize(mWindow, &width, &height);
+    }
+
   private:
     void createInstance(std::string appName);
     void createDebugCallback();

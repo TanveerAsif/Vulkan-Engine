@@ -4,7 +4,6 @@ exports_files(["Core.cpp", "include/Core.h"])
 
 cc_library(
     name = "vulkan",
-    linkopts = ["-lvulkan"],
     visibility = ["//visibility:public"],
 )
 
@@ -32,6 +31,7 @@ cc_library(
         "GLFW.cpp",
         "GraphicsPipeline.cpp",
         "GraphicsPipelineV2.cpp",
+        "ImGuiRenderer.cpp",
         "PhysicalDevice.cpp",
         "model/Material.cpp",
         "model/Mesh.cpp",
@@ -50,6 +50,7 @@ cc_library(
         ":shaderc",
         ":assimp",
         "//third_party:stb_image",
+        "//third_party:imgui",
     ],
     visibility = ["//visibility:public"],
 )

@@ -5,29 +5,38 @@
 #include "Wrapper.h"
 
 #include <GLFW/glfw3.h>
+#include <X11/extensions/randr.h>
+#include <glm/ext/matrix_float4x4.hpp>
+#include <glm/ext/quaternion_geometric.hpp>
+#include <vulkan/vulkan_core.h>
+#define IMGUI_DEFINE_MATH_OPERATORS
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_vulkan.h"
+
 #include <array>
 #include <cmath>
 #include <cstdint>
-#include <glm/ext/matrix_float4x4.hpp>
-#include <glm/ext/quaternion_geometric.hpp>
 #include <iostream>
 #include <vector>
-#include <vulkan/vulkan_core.h>
 
 namespace VulkanApp
 {
 
 App::App(int32_t width, int32_t height)
-    : mWindow{nullptr}, mVulkanCore{}, mGraphicsQueue{nullptr},
-      /*mGraphicsPipeline{nullptr},*/ mNumImages{0}, mCommandBuffers{}, mWindowWidth{width},
-      mWindowHeight{height}, mCamera{nullptr}, mGraphicsPipelineV2{nullptr}, mModel{nullptr}
+    : mWindow{nullptr}, mVulkanCore{}, mGraphicsQueue{nullptr}, mNumImages{0}, mCommandBuffers{},
+      mVSShaderModule{VK_NULL_HANDLE}, mFSShaderModule{VK_NULL_HANDLE}, mWindowWidth{width},
+      mWindowHeight{height}, mCamera{nullptr}, mGraphicsPipelineV2{nullptr}, mModel{nullptr}, mImGuiRenderer{nullptr},
+      mImGuiWidth{100}, mImGuiHeight{500}, mShowImGui{true},
+      mClearColor{0.0f, 1.0f, 0.0f}, mPosition{0.0f, 0.0f, 0.0f}, mRotation{0.0f, 0.0f, 0.0f}, mScale{1.0f}
 {
 }
 
 App::~App()
 {
     // 1. Command buffers will be freed when command pool is destroyed
-    mVulkanCore.freeCommandBuffers(mCommandBuffers.data(), mNumImages);
+    mVulkanCore.freeCommandBuffers(mCommandBuffers.withGUI.data(), mCommandBuffers.withGUI.size());
+    mVulkanCore.freeCommandBuffers(mCommandBuffers.withoutGUI.data(), mCommandBuffers.withoutGUI.size());
 
     // 2. Destroy shader modules
     vkDestroyShaderModule(mVulkanCore.getDevice(), mVSShaderModule, nullptr);
@@ -68,7 +77,15 @@ App::~App()
         mModel = nullptr;
     }
 
-    // 8. Cleanup Vulkan core resources in destructror of VulkanCore
+    // 8 . Destroy ImGui renderer
+    if (mImGuiRenderer)
+    {
+        mImGuiRenderer->destroy();
+        delete mImGuiRenderer;
+        mImGuiRenderer = nullptr;
+    }
+
+    // 9. Cleanup Vulkan core resources in destructror of VulkanCore
 }
 
 void App::init(std::string appName)
@@ -89,6 +106,7 @@ void App::init(std::string appName)
     recordCommandBuffer();
     defaultCreateCameraPers();
     VulkanCore::glfw_vulkan_set_callbacks(mWindow, this);
+    mImGuiRenderer = new VulkanCore::ImGuiRenderer(&mVulkanCore, mImGuiWidth, mImGuiHeight);
 }
 
 void App::renderScene()
@@ -96,7 +114,18 @@ void App::renderScene()
     // Main application loop here
     uint32_t imageIndex = mGraphicsQueue->acquireNextImage();
     updateUniformBuffer(imageIndex);
-    mGraphicsQueue->submitAsync(mCommandBuffers[imageIndex]);
+    if (mShowImGui)
+    {
+        updateGUI();
+
+        VkCommandBuffer imguiCmdBuf = mImGuiRenderer->prepareCommandBuffer(imageIndex);
+        VkCommandBuffer commandBuffers[] = {mCommandBuffers.withGUI[imageIndex], imguiCmdBuf};
+        mGraphicsQueue->submitAsync(&commandBuffers[0], 2);
+    }
+    else
+    {
+        mGraphicsQueue->submitAsync(mCommandBuffers.withoutGUI[imageIndex]);
+    }
     mGraphicsQueue->presentImage(imageIndex);
 }
 
@@ -127,13 +156,18 @@ void App::onKeyEvent(GLFWwindow* window, int key, int scancode, int action, int 
         glfwSetWindowShouldClose(window, GLFW_TRUE);
     }
 
+    if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
+    {
+        mShowImGui = !mShowImGui;
+    }
+
     if ((glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS ||
          glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS))
     {
         mCamera->setSpeed(100.0f);
     }
 
-    float_t _fTick = mCamera->getTick();
+    float_t _fTick = 1.0F; // mCamera->getTick();
     float_t _fSpeed = mCamera->getSpeed();
     float_t _fRotSpeed = mCamera->getRotSpeed();
     // Move Up
@@ -219,44 +253,26 @@ void App::onMouseMove(GLFWwindow* window, double xoffset, double yoffset)
 
 void App::onMouseButtonEvent(GLFWwindow* window, int button, int action, int mods)
 {
-    // Handle mouse button events
+    if (!isMouseControlledByImGui())
+    {
+        mCamera->handleMouseButton(button, action, mods);
+    }
 }
 
 void App::createCommandBuffers()
 {
-    mCommandBuffers.resize(mNumImages);
-    mVulkanCore.createCommandBuffers(mCommandBuffers.data(), mNumImages);
+    mCommandBuffers.withGUI.resize(mNumImages);
+    mVulkanCore.createCommandBuffers(mCommandBuffers.withGUI.data(), mNumImages);
+
+    mCommandBuffers.withoutGUI.resize(mNumImages);
+    mVulkanCore.createCommandBuffers(mCommandBuffers.withoutGUI.data(), mNumImages);
 }
 
 void App::recordCommandBuffer()
 {
     mModel->createDescriptorSets(mGraphicsPipelineV2);
-
-    for (uint32_t i = 0; i < mCommandBuffers.size(); ++i)
-    {
-        // Begin command buffer recording
-        VulkanCore::BeginCommandBuffer(mCommandBuffers[i], VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
-
-        VulkanCore::imageMemBarrier(mCommandBuffers[i], mVulkanCore.getSwapchainImage(i),
-                                    mVulkanCore.getSwapchainSurfaceFormat(), VK_IMAGE_LAYOUT_UNDEFINED,
-                                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-        beginRendering(mCommandBuffers[i], i);
-
-        mGraphicsPipelineV2->bind(mCommandBuffers[i]);
-        mModel->recordCommandBuffer(mCommandBuffers[i], mGraphicsPipelineV2, i);
-
-        vkCmdEndRendering(mCommandBuffers[i]);
-        VulkanCore::imageMemBarrier(mCommandBuffers[i], mVulkanCore.getSwapchainImage(i),
-                                    mVulkanCore.getSwapchainSurfaceFormat(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                    VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
-
-        if (vkEndCommandBuffer(mCommandBuffers[i]) != VK_SUCCESS)
-        {
-            throw std::runtime_error("Failed to record command buffer " + std::to_string(i));
-        }
-    }
-
-    std::cout << "Recorded " << mCommandBuffers.size() << " command buffers." << std::endl;
+    recordCommandBufferInteral(true, mCommandBuffers.withGUI);
+    recordCommandBufferInteral(false, mCommandBuffers.withoutGUI);
 }
 
 void App::createShaders()
@@ -319,21 +335,16 @@ void App::createUniformBuffers()
 
 void App::updateUniformBuffer(uint32_t currentImage)
 {
+    glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(mScale));
 
-    // static float_t time = 0.0f;
-    // glm::mat4 rotate = glm::mat4(1.0f);
-    // rotate = glm::rotate(rotate, glm::radians(time),
-    //                      glm::normalize(glm::vec3(0.0f, 0.0f, 1.0f)));
-    // time += 0.1f; // assuming 60 FPS for simplicity
-    //
-    //   glm::mat4 wvp = mCamera->getVPMatrix() * rotate;
-    //   mUniformBuffers[currentImage].update(mVulkanCore.getDevice(), &wvp,
-    //                                        sizeof(wvp));
+    glm::mat4 rotationX = glm::rotate(glm::mat4(1.0f), mRotation.x, glm::vec3(1.0f, 0.0f, 0.0f));
+    glm::mat4 rotationY = glm::rotate(glm::mat4(1.0f), mRotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 rotationZ = glm::rotate(glm::mat4(1.0f), mRotation.z, glm::vec3(0.0f, 0.0f, 1.0f));
+    glm::mat4 rotation = rotationZ * rotationY * rotationX;
 
-    // Scale the model down (adjust the scale factor as needed: 0.1 = 10% of original size)
-    // spider model is quite large, so scaling down to 10%
-    glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(0.1f, 0.1f, 0.1f));
-    glm::mat4 modelMatrix = scale; // No additional transformations
+    glm::mat4 translation = glm::translate(glm::mat4(1.0f), mPosition);
+
+    glm::mat4 modelMatrix = translation * rotation * scale;
     glm::mat4 vp = mCamera->getVPMatrix();
     mModel->update(currentImage, vp * modelMatrix);
 }
@@ -365,59 +376,117 @@ void App::loadTexture()
     mVulkanCore.createTexture("VulkanDemo/assets/wall.jpg", *(mMesh.mTexture));
 }
 
-void App::beginRendering(VkCommandBuffer commandBuffer, uint32_t imageIndex)
+void App::recordCommandBufferInteral(bool withSecondBarrier, std::vector<VkCommandBuffer>& commandBuffers)
 {
-    VkClearValue clearColor = {.color = {0.0F, 0.0F, 0.0F, 1.0F}};
+    VkClearValue clearColor = {.color = {{mClearColor.r, mClearColor.g, mClearColor.b, 1.0F}}};
     VkClearValue clearDepth = {.depthStencil = {1.0F, 0}};
+    for (uint32_t i = 0; i < commandBuffers.size(); ++i)
+    {
+        // Begin command buffer recording
+        VulkanCore::BeginCommandBuffer(commandBuffers[i], VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
 
-    VkRenderingAttachmentInfoKHR colorAttachment = {
-        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
-        .pNext = nullptr,
-        .imageView = mVulkanCore.getSwapchainImageView(imageIndex),
-        .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        .resolveMode = VK_RESOLVE_MODE_NONE,
-        .resolveImageView = VK_NULL_HANDLE,
-        .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-        .clearValue = clearColor,
-    };
+        // Transition from UNDEFINED (works for both first frame and subsequent frames)
+        // On first frame: actually UNDEFINED
+        // On subsequent frames: coming from PRESENT_SRC_KHR, but UNDEFINED transition is safe
+        VulkanCore::imageMemBarrier(commandBuffers[i], mVulkanCore.getSwapchainImage(i),
+                                    mVulkanCore.getSwapchainSurfaceFormat(), VK_IMAGE_LAYOUT_UNDEFINED,
+                                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
-    VkRenderingAttachmentInfoKHR depthAttachment = {
-        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
-        .pNext = nullptr,
-        .imageView = mVulkanCore.getDepthImageView(imageIndex),
-        .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-        .resolveMode = VK_RESOLVE_MODE_NONE,
-        .resolveImageView = VK_NULL_HANDLE,
-        .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-        .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-        .clearValue = clearDepth,
-    };
+        mVulkanCore.beginDynamicRendering(commandBuffers[i], i, &clearColor, &clearDepth);
+        mGraphicsPipelineV2->bind(commandBuffers[i]);
+        mModel->recordCommandBuffer(commandBuffers[i], mGraphicsPipelineV2, i);
 
-    VkRenderingInfoKHR renderingInfo = {
-        .sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR,
-        .pNext = nullptr,
-        .flags = 0,
-        .renderArea =
+        vkCmdEndRendering(commandBuffers[i]);
+
+        if (!withSecondBarrier)
+        {
+            // For standalone rendering (no ImGui), do final transition to present
+            VulkanCore::imageMemBarrier(commandBuffers[i], mVulkanCore.getSwapchainImage(i),
+                                        mVulkanCore.getSwapchainSurfaceFormat(),
+                                        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+        }
+
+        if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS)
+        {
+            throw std::runtime_error("Failed to record command buffer " + std::to_string(i));
+        }
+    }
+
+    std::cout << "Recorded " << commandBuffers.size() << " command buffers." << std::endl;
+}
+
+void App::updateGUI()
+{
+    // ImGuiIO& io = ImGui::GetIO();
+    ImGui_ImplVulkan_NewFrame(); // Setup ImGui frame for Vulkan
+    ImGui_ImplGlfw_NewFrame();   // Setup ImGui frame for GLFW
+    ImGui::NewFrame();           // Start new ImGui frame
+
+    // Settings Window - Set size and position
+    ImGui::SetNextWindowSize(ImVec2(mImGuiWidth, mImGuiHeight), ImGuiCond_FirstUseEver); // Set window size on first use
+    ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_FirstUseEver); // Set window position on first use
+    ImGui::Begin("Settings", NULL);                                  // Create a window called "Settings"
+    ImGui::Text("This is some useful text.");
+
+    ImGui::Separator();
+
+    ImGui::BeginGroup();
+    {
+        // ImGui::Begin("Transform");
+        if (ImGui::CollapsingHeader("Position"))
+        {
+            ImGui::SliderFloat("PosX", &mPosition.x, 0.0F, 100.0F);
+            ImGui::SliderFloat("PosY", &mPosition.y, 0.0F, 100.0F);
+            ImGui::SliderFloat("PosZ", &mPosition.z, 0.0F, 100.0F);
+            if (ImGui::Button("Reset Position"))
             {
-                .offset = {0, 0},
-                .extent =
-                    {
-                        static_cast<uint32_t>(mWindowWidth),
-                        static_cast<uint32_t>(mWindowHeight),
-                    },
-            },
-        .layerCount = 1,
-        .viewMask = 0,
-        .colorAttachmentCount = 1,
-        .pColorAttachments = &colorAttachment,
-        .pDepthAttachment = &depthAttachment,
-        .pStencilAttachment = nullptr,
-    };
+                mPosition = glm::vec3(0.0f, 0.0f, 0.0f);
+            }
+        }
 
-    vkCmdBeginRendering(commandBuffer, &renderingInfo);
+        if (ImGui::CollapsingHeader("Rotation"))
+        {
+            ImGui::SliderFloat("RotX", &mRotation.x, 0.0F, glm::two_pi<float_t>());
+            ImGui::SliderFloat("RotY", &mRotation.y, 0.0F, glm::two_pi<float_t>());
+            ImGui::SliderFloat("RotZ", &mRotation.z, 0.0F, glm::two_pi<float_t>());
+            if (ImGui::Button("Reset Rotation"))
+            {
+                mRotation = glm::vec3(0.0f, 0.0f, 0.0f);
+            }
+        }
+        if (ImGui::CollapsingHeader("Scaling"))
+        {
+            ImGui::SliderFloat("Down", &mScale, 0.1f, 1.0f);
+            ImGui::SliderFloat("Up", &mScale, 1.0f, 10.0f);
+            if (ImGui::Button("Reset Scale"))
+            {
+                mScale = 1.0f;
+            }
+        }
+        if (ImGui::CollapsingHeader("Camera"))
+        {
+            float_t cameraSpeed = mCamera->getSpeed();
+            ImGui::SliderFloat("Camera Speed", &cameraSpeed, 1.0F, 100.0F);
+            mCamera->setSpeed(cameraSpeed);
+
+            if (ImGui::Button("Reset"))
+            {
+                mCamera->setPosition(glm::vec3(0.0f, 0.0f, -50.0f));
+                mCamera->setYaw(0.0f);
+                mCamera->setPitch(0.0f);
+                mCamera->setRoll(0.0f);
+                mCamera->setSpeed(10.0f);
+                mCamera->process();
+            }
+        }
+    }
+    ImGui::EndGroup();
+
+    // imGuiIZMO : 3D axis and gizmo manipulation can be added here if needed
+
+    ImGui::End(); // End Transform window
+
+    ImGui::Render(); // Finalize the ImGui frame
 }
 
 } // namespace VulkanApp

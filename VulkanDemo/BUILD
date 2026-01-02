@@ -8,7 +8,8 @@ cc_binary(
     includes = ["../VulkanCore/include",".", "include"],  # Add "." for local includes
     deps = [
         "//VulkanCore:VulkanCore",
-        "@glm//:glm"
+        "@glm//:glm",
+        "//third_party:imgui",
     ],
     linkopts = ["-lglfw", "-ldl", "-lpthread", "-lX11"],
     data = glob(["shaders/*"]),

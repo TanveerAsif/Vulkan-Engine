@@ -25,7 +25,8 @@ VulkanCore::VulkanCore()
       mSurface(VK_NULL_HANDLE), mPhysicalDevice{}, mQueueFamilyIndex{0},
       mLogicalDevice(VK_NULL_HANDLE), mSwapchainSurfaceFormat{},
       mSwapchain(VK_NULL_HANDLE), mSwapchainImages{}, mSwapchainImageViews{},
-      mCommandPool(VK_NULL_HANDLE), mGraphicsQueue{}, mFrameBuffers{}, mCopyCmdBuffer(VK_NULL_HANDLE)
+      mCommandPool(VK_NULL_HANDLE), mGraphicsQueue{}, mFrameBuffers{}, mCopyCmdBuffer(VK_NULL_HANDLE),
+      mDepthEnabled(false), mInstanceVersion{}
 {
 }
 
@@ -1022,6 +1023,70 @@ VkImageView VulkanCore::getSwapchainImageView(uint32_t index) const
         throw std::out_of_range("Swapchain image view index out of range: " + std::to_string(index));
     }
     return mSwapchainImageViews[index];
+}
+
+void VulkanCore::beginDynamicRendering(VkCommandBuffer commandBuffer, uint32_t imageIndex, VkClearValue* clearColor,
+                                       VkClearValue* clearDepth)
+{
+
+    VkRenderingAttachmentInfoKHR colorAttachment = {
+        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
+        .pNext = nullptr,
+        .imageView = getSwapchainImageView(imageIndex),
+        .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        .resolveMode = VK_RESOLVE_MODE_NONE,
+        .resolveImageView = VK_NULL_HANDLE,
+        .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .loadOp = clearColor ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD,
+        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+        //.clearValue = *clearColor,
+    };
+    if (clearColor)
+    {
+        colorAttachment.clearValue = *clearColor;
+    }
+
+    VkRenderingAttachmentInfoKHR depthAttachment = {
+        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
+        .pNext = nullptr,
+        .imageView = getDepthImageView(imageIndex),
+        .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+        .resolveMode = VK_RESOLVE_MODE_NONE,
+        .resolveImageView = VK_NULL_HANDLE,
+        .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .loadOp = clearDepth ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD,
+        .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        //.clearValue = *clearDepth,
+    };
+    if (clearDepth)
+    {
+        depthAttachment.clearValue = *clearDepth;
+    }
+
+    int32_t windowWidth{0}, windowHeight{0};
+    glfwGetFramebufferSize(mWindow, &windowWidth, &windowHeight);
+
+    VkRenderingInfoKHR renderingInfo = {
+        .sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR,
+        .pNext = nullptr,
+        .flags = 0,
+        .renderArea =
+            {
+                .offset = {0, 0},
+                .extent =
+                    {
+                        static_cast<uint32_t>(windowWidth),
+                        static_cast<uint32_t>(windowHeight),
+                    },
+            },
+        .layerCount = 1,
+        .viewMask = 0,
+        .colorAttachmentCount = 1,
+        .pColorAttachments = &colorAttachment,
+        .pDepthAttachment = &depthAttachment,
+        .pStencilAttachment = nullptr,
+    };
+    vkCmdBeginRendering(commandBuffer, &renderingInfo);
 }
 
 } // namespace VulkanCore

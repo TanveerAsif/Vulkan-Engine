@@ -13,6 +13,7 @@
 #include "GLFW.h"
 #include "GraphicsPipeline.h"
 #include "GraphicsPipelineV2.h"
+#include "ImGuiRenderer.h"
 #include "Queue.h"
 #include "SimpleMesh.h"
 #include "VulkanModel.h"
@@ -46,7 +47,8 @@ class App : public VulkanCore::GLFWCallbacks
     void renderScene();
     void createMesh();
     void loadTexture();
-    void beginRendering(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+    void recordCommandBufferInteral(bool withSecondBarrier, std::vector<VkCommandBuffer>& commandBuffers);
+    void updateGUI();
 
     GLFWwindow* mWindow;
     VulkanCore::VulkanCore mVulkanCore;
@@ -55,7 +57,11 @@ class App : public VulkanCore::GLFWCallbacks
     VulkanCore::SimpleMesh mMesh;
 
     int32_t mNumImages;
-    std::vector<VkCommandBuffer> mCommandBuffers;
+    struct
+    {
+        std::vector<VkCommandBuffer> withGUI;
+        std::vector<VkCommandBuffer> withoutGUI;
+    } mCommandBuffers;
 
     VkShaderModule mVSShaderModule;
     VkShaderModule mFSShaderModule;
@@ -66,6 +72,14 @@ class App : public VulkanCore::GLFWCallbacks
 
     VulkanCore::GraphicsPipelineV2* mGraphicsPipelineV2;
     VulkanCore::VulkanModel* mModel;
+    VulkanCore::ImGuiRenderer* mImGuiRenderer;
+    int32_t mImGuiWidth, mImGuiHeight;
+
+    bool mShowImGui;
+    glm::vec3 mClearColor;
+    glm::vec3 mPosition;
+    glm::vec3 mRotation;
+    float_t mScale;
 };
 
 } // namespace VulkanApp
