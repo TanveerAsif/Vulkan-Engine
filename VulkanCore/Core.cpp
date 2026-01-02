@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <vector>
 #include <vulkan/vulkan_core.h>
+#include <xcb/xcb.h>
 #include <vulkan/vulkan_xcb.h>
 #include <xcb/xcb.h>
 

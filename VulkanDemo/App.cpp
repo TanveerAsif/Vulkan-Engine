@@ -430,20 +430,16 @@ void App::updateGUI()
     ImGui::Begin("Settings", NULL);                                  // Create a window called "Settings"
     ImGui::Text("This is some useful text.");
 
-    static float f{0.0F};
-    ImGui::SliderFloat("Float Slider", &f, 0.0F, 1.0F);
-    ImGui::ColorEdit3("Clear Color", (float*)&mClearColor);
-    // ImGui::End(); // End Settings window
-
     ImGui::Separator();
-    // Transform Window
+
     ImGui::BeginGroup();
     {
         // ImGui::Begin("Transform");
         if (ImGui::CollapsingHeader("Position"))
         {
-            ImGui::DragFloat3("Position", &mPosition.x, 0.01f);
-            ImGui::SameLine();
+            ImGui::SliderFloat("PosX", &mPosition.x, 0.0F, 100.0F);
+            ImGui::SliderFloat("PosY", &mPosition.y, 0.0F, 100.0F);
+            ImGui::SliderFloat("PosZ", &mPosition.z, 0.0F, 100.0F);
             if (ImGui::Button("Reset Position"))
             {
                 mPosition = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -452,8 +448,9 @@ void App::updateGUI()
 
         if (ImGui::CollapsingHeader("Rotation"))
         {
-            ImGui::DragFloat3("Rotation", &mRotation.x, 0.01f);
-            ImGui::SameLine();
+            ImGui::SliderFloat("RotX", &mRotation.x, 0.0F, 3.14F);
+            ImGui::SliderFloat("RotY", &mRotation.y, 0.0F, 3.14F);
+            ImGui::SliderFloat("RotZ", &mRotation.z, 0.0F, 3.14F);
             if (ImGui::Button("Reset Rotation"))
             {
                 mRotation = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -461,8 +458,8 @@ void App::updateGUI()
         }
         if (ImGui::CollapsingHeader("Scaling"))
         {
-            ImGui::DragFloat("Scale", &mScale, 0.01f);
-            ImGui::SameLine();
+            ImGui::SliderFloat("Down", &mScale, 0.1f, 1.0f);
+            ImGui::SliderFloat("Up", &mScale, 1.0f, 10.0f);
             if (ImGui::Button("Reset Scale"))
             {
                 mScale = 1.0f;
