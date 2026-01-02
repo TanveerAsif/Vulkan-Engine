@@ -117,4 +117,10 @@ void Camera::setTopView(const float_t duration)
     this->setTick(duration);
     this->process();
 }
+
+void Camera::handleMouseButton(int button, int action, int mods)
+{
+    // ToDo: Implement mouse button handling if needed
+}
+
 } // namespace VulkanCore

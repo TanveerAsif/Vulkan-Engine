@@ -29,7 +29,8 @@ cc_library(
     deps = [
         ":imgui_core",
     ],
-    linkopts = ["-lglfw"],
+    copts = ["-I/usr/local/include"],  # Use GLFW 3.4 headers from /usr/local
+    linkopts = ["/usr/local/lib/libglfw3.a"],  # Link against GLFW 3.4 static library
     includes = ["ImGui", "ImGui/backend"],
     visibility = ["//visibility:public"],
 )

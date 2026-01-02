@@ -88,6 +88,8 @@ class Camera
     void updateAttachment();
     bool isAttached();
     void setTopView(const float_t duration);
+
+    void handleMouseButton(int button, int action, int mods);
 };
 
 } // namespace VulkanCore
