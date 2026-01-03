@@ -31,6 +31,7 @@ struct PipelineDesc
     VkFormat mColorFormat = VK_FORMAT_UNDEFINED;
     VkFormat mDepthFormat = VK_FORMAT_UNDEFINED;
     VkCompareOp mDepthCompareOp = VK_COMPARE_OP_LESS;
+    VkCullModeFlags mCullMode = VK_CULL_MODE_BACK_BIT;
     bool mIsVB = false;
     bool mIsIB = false;
     bool mIsUniform = false;
@@ -58,7 +59,8 @@ class GraphicsPipelineV2
 
   private:
     void initCommon(GLFWwindow* window, VkRenderPass renderPass, VkShaderModule vsModule, VkShaderModule fsModule,
-                    int32_t numImages, VkFormat colorFormat, VkFormat depthFormat, VkCompareOp depthCompareOp);
+                    int32_t numImages, VkFormat colorFormat, VkFormat depthFormat, VkCompareOp depthCompareOp,
+                    VkCullModeFlags cullMode = VK_CULL_MODE_BACK_BIT);
 
     void allocateDescriptorSetsInternal(int32_t numSubmeshes,
                                         std::vector<std::vector<VkDescriptorSet>>& descriptorSets);

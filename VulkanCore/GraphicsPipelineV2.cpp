@@ -1,5 +1,5 @@
 #include "GraphicsPipelineV2.h"
-#include "include/GraphicsPipelineV2.h"
+
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
@@ -15,7 +15,8 @@ GraphicsPipelineV2::GraphicsPipelineV2(VkDevice device, GLFWwindow* window, VkRe
       mDescriptorPool(VK_NULL_HANDLE), mDescriptorSetLayout(VK_NULL_HANDLE), mNumImages(numImages)
 {
     createDescriptorSetLayout(true, true, true, true, false); // VB, IB, Uniform, Tex2D, Cubemap
-    initCommon(window, renderPass, vsModule, fsModule, numImages, colorFormat, depthFormat, VK_COMPARE_OP_LESS);
+    initCommon(window, renderPass, vsModule, fsModule, numImages, colorFormat, depthFormat, VK_COMPARE_OP_LESS,
+               VK_CULL_MODE_BACK_BIT);
 }
 
 GraphicsPipelineV2::GraphicsPipelineV2(PipelineDesc const& pd)
@@ -24,7 +25,7 @@ GraphicsPipelineV2::GraphicsPipelineV2(PipelineDesc const& pd)
 {
     createDescriptorSetLayout(pd.mIsVB, pd.mIsIB, pd.mIsUniform, pd.mIsTex2D, pd.mIsCubemap);
     initCommon(pd.mWindow, nullptr, pd.mVertexShaderModule, pd.mFragmentShaderModule, pd.mNumSwapchainImages,
-               pd.mColorFormat, pd.mDepthFormat, pd.mDepthCompareOp);
+               pd.mColorFormat, pd.mDepthFormat, pd.mDepthCompareOp, pd.mCullMode);
 }
 
 GraphicsPipelineV2::~GraphicsPipelineV2()
@@ -167,7 +168,7 @@ void GraphicsPipelineV2::updateDescriptorSets(const ModelDesc& modelDesc,
 
 void GraphicsPipelineV2::initCommon(GLFWwindow* window, VkRenderPass renderPass, VkShaderModule vsModule,
                                     VkShaderModule fsModule, int32_t numImages, VkFormat colorFormat,
-                                    VkFormat depthFormat, VkCompareOp depthCompareOp)
+                                    VkFormat depthFormat, VkCompareOp depthCompareOp, VkCullModeFlags cullMode)
 {
 
     VkPipelineShaderStageCreateInfo shaderStagesCreateInfo[2]{
@@ -222,7 +223,7 @@ void GraphicsPipelineV2::initCommon(GLFWwindow* window, VkRenderPass renderPass,
     VkPipelineRasterizationStateCreateInfo rasterizerCreateInfo{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
         .polygonMode = VK_POLYGON_MODE_FILL,
-        .cullMode = VK_CULL_MODE_BACK_BIT,
+        .cullMode = cullMode,
         .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
         .lineWidth = 1.0f,
     };

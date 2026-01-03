@@ -4,6 +4,7 @@
 
 #include <cassert>
 #include <cstdint>
+#include <iostream>
 #include <vector>
 #include <vulkan/vulkan_core.h>
 
@@ -31,6 +32,7 @@ SkyBox::SkyBox(VulkanCore* vulkanCore, std::string fileName)
     pd.mColorFormat = mVulkanCore->getSwapchainSurfaceFormat();
     pd.mDepthFormat = mVulkanCore->getDepthFormat();
     pd.mDepthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL; // important for skybox
+    pd.mCullMode = VK_CULL_MODE_FRONT_BIT;            // Cull front faces since we're inside the cube
     pd.mIsUniform = true;
     pd.mIsCubemap = true;
 

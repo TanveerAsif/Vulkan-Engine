@@ -28,8 +28,10 @@ const int indices[36] = int[](
 void main()
 {
     int idx = indices[gl_VertexIndex];
-    vec4 worldPos = ubo.vp * vec4(pos[idx], 1.0);
-    gl_Position = worldPos.xyww;   // perspective divide w = z for skybox depth trick : always at far plane
+    vec4 clipPos = ubo.vp * vec4(pos[idx], 1.0);
+    
+    // Set z = w to ensure depth is 1.0 after perspective divide (always at far plane)
+    gl_Position = clipPos.xyww;
 
-    Dir = pos[idx].xyz;
+    Dir = pos[idx];
 }

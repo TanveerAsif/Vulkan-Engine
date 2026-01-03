@@ -84,6 +84,11 @@ class Camera
         return mProjectionMatrix * m_matView;
     };
 
+    glm::mat4 getProjectionMatrix() const
+    {
+        return mProjectionMatrix;
+    };
+
     void update();
     void updateAttachment();
     bool isAttached();

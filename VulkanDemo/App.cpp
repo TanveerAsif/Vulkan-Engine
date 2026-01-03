@@ -370,7 +370,17 @@ void App::updateUniformBuffer(uint32_t currentImage)
     glm::mat4 vp = mCamera->getVPMatrix();
     mModel->update(currentImage, vp * modelMatrix);
 
-    mSkybox->update(currentImage, vp);
+    // For skybox: remove translation from view matrix (keep only rotation)
+    glm::mat4 viewMatrix = mCamera->getCameraMatrix();
+    // Extract rotation and construct 4x4 matrix manually
+    // glm::mat4 viewNoTranslation = glm::mat4(glm::vec4(viewMatrix[0][0], viewMatrix[0][1], viewMatrix[0][2], 0.0f),
+    //                                         glm::vec4(viewMatrix[1][0], viewMatrix[1][1], viewMatrix[1][2], 0.0f),
+    //                                         glm::vec4(viewMatrix[2][0], viewMatrix[2][1], viewMatrix[2][2], 0.0f),
+    //                                         glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
+    glm::mat4 viewNoTranslation = glm::mat4(glm::mat3(viewMatrix));
+
+    glm::mat4 skyboxVP = mCamera->getProjectionMatrix() * viewNoTranslation;
+    mSkybox->update(currentImage, skyboxVP);
 }
 
 void App::defaultCreateCameraPers()
