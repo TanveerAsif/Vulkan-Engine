@@ -21,13 +21,31 @@ enum V2_Binding
     V2_Binding_Count = 5
 };
 
+struct PipelineDesc
+{
+    VkDevice mDevice = VK_NULL_HANDLE;
+    GLFWwindow* mWindow = nullptr;
+    VkShaderModule mVertexShaderModule = VK_NULL_HANDLE;
+    VkShaderModule mFragmentShaderModule = VK_NULL_HANDLE;
+    int32_t mNumSwapchainImages = 0;
+    VkFormat mColorFormat = VK_FORMAT_UNDEFINED;
+    VkFormat mDepthFormat = VK_FORMAT_UNDEFINED;
+    VkCompareOp mDepthCompareOp = VK_COMPARE_OP_LESS;
+    VkCullModeFlags mCullMode = VK_CULL_MODE_BACK_BIT;
+    bool mIsVB = false;
+    bool mIsIB = false;
+    bool mIsUniform = false;
+    bool mIsTex2D = false;
+    bool mIsCubemap = false;
+};
+
 class GraphicsPipelineV2
 {
   public:
     GraphicsPipelineV2(VkDevice device, GLFWwindow* window, VkRenderPass renderPass, VkShaderModule vsModule,
                        VkShaderModule fsModule, int32_t numImages, VkFormat colorFormat, VkFormat depthFormat);
 
-    // GraphicsPipelineV2(const PipelineDesc& pd);
+    GraphicsPipelineV2(const PipelineDesc& pd);
     ~GraphicsPipelineV2();
 
     void bind(VkCommandBuffer commandBuffer);
@@ -41,7 +59,8 @@ class GraphicsPipelineV2
 
   private:
     void initCommon(GLFWwindow* window, VkRenderPass renderPass, VkShaderModule vsModule, VkShaderModule fsModule,
-                    int32_t numImages, VkFormat colorFormat, VkFormat depthFormat, VkCompareOp depthCompareOp);
+                    int32_t numImages, VkFormat colorFormat, VkFormat depthFormat, VkCompareOp depthCompareOp,
+                    VkCullModeFlags cullMode = VK_CULL_MODE_BACK_BIT);
 
     void allocateDescriptorSetsInternal(int32_t numSubmeshes,
                                         std::vector<std::vector<VkDescriptorSet>>& descriptorSets);

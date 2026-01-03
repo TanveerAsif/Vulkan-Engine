@@ -9,9 +9,10 @@ void BeginCommandBuffer(VkCommandBuffer commandBuffer, VkCommandBufferUsageFlags
 VkSemaphore CreateSemaphore(VkDevice Device);
 
 void imageMemBarrier(VkCommandBuffer CmdBuf, VkImage Image, VkFormat Format, VkImageLayout OldLayout,
-                     VkImageLayout NewLayout);
+                     VkImageLayout NewLayout, int32_t layerCount);
 
-VkImageView createImageView(VkDevice Device, VkImage Image, VkFormat Format, VkImageAspectFlags AspectFlags);
+VkImageView createImageView(VkDevice Device, VkImage Image, VkFormat Format, VkImageAspectFlags AspectFlags,
+                            bool isCubemap);
 
 VkSampler createTextureSampler(VkDevice Device, VkFilter MinFilter, VkFilter MagFilter,
                                VkSamplerAddressMode AddressMode);

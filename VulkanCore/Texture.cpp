@@ -17,7 +17,7 @@ void Texture::Load(uint32_t bufferSize, void* pImageData)
 
     void* pLoadedImageData = stbi_load_from_memory((const stbi_uc*)pImageData, bufferSize, &Width, &Height, &BPP, 0);
 
-    m_pVulkanCore->createTextureImageFromData(*this, pLoadedImageData, Width, Height, VK_FORMAT_R8G8B8A8_SRGB);
+    m_pVulkanCore->createTextureImageFromData(*this, pLoadedImageData, Width, Height, VK_FORMAT_R8G8B8A8_SRGB, false);
     stbi_image_free(pLoadedImageData);
 }
 
@@ -49,6 +49,11 @@ void Texture::destroy(VkDevice device)
 
     mWidth = 0;
     mHeight = 0;
+}
+
+void Texture::loadEctCubemap(const std::string& fileName)
+{
+    m_pVulkanCore->createCubemapTexture(fileName, *this);
 }
 
 } // namespace VulkanCore

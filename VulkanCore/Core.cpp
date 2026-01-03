@@ -11,6 +11,7 @@
 #include <xcb/xcb.h>
 
 #include "Wrapper.h"
+#include "include/BitmapUtils.h"
 #include "include/Core.h"
 #include <cstring>
 
@@ -826,46 +827,106 @@ void VulkanCore::createTexture(std::string filePath, Texture& outTexture)
     // Note: STBI_rgb_alpha ensures pixels are always RGBA format regardless of
     // original channels
     VkFormat imageFormat = VK_FORMAT_R8G8B8A8_UNORM;
-    createTextureImageFromData(outTexture, pixels, texWidth, texHeight, imageFormat);
+    createTextureImageFromData(outTexture, pixels, texWidth, texHeight, imageFormat, false);
 
     // Step3 : Free pixel data loaded by stb_image
     stbi_image_free(pixels);
 
     // Step4 : create Vulkan image view
     VkImageAspectFlags aspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
-    outTexture.mImageView = createImageView(mLogicalDevice, outTexture.mImage, imageFormat, aspectFlags);
+    outTexture.mImageView = createImageView(mLogicalDevice, outTexture.mImage, imageFormat, aspectFlags, false);
 
     // Step5 : create texture sampler
     VkFilter minFilter = VK_FILTER_LINEAR;
-    VkFilter magFilter = VK_FILTER_LINEAR;
+    VkFilter maxFilter = VK_FILTER_LINEAR;
     VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    outTexture.mSampler = createTextureSampler(mLogicalDevice, minFilter, magFilter, addressMode);
+    outTexture.mSampler = createTextureSampler(mLogicalDevice, minFilter, maxFilter, addressMode);
 
     // std::cout << "Texture created successfully from file: " << filePath << std::endl;
 }
 
 void VulkanCore::createTextureImageFromData(Texture& outTexture, const void* pixels, int texWidth, int texHeight,
-                                            VkFormat imageFormat)
+                                            VkFormat imageFormat, bool isCubemap)
 {
     VkImageUsageFlags usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
     VkMemoryPropertyFlags memProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-    createImage(outTexture, texWidth, texHeight, imageFormat, usage, memProperties);
-    updateTextureImage(outTexture, texWidth, texHeight, imageFormat, pixels);
+    createImage(outTexture, texWidth, texHeight, imageFormat, usage, memProperties, isCubemap);
+
+    int32_t layerCount = isCubemap ? 6 : 1;
+    updateTextureImage(outTexture, texWidth, texHeight, imageFormat, layerCount, pixels, isCubemap);
+}
+
+void VulkanCore::createCubemapTexture(std::string filePath, Texture& outTexture)
+{
+    int32_t texWidth, texHeight;
+    const unsigned char* pImageData = stbi_load(filePath.c_str(), &texWidth, &texHeight, nullptr, STBI_rgb_alpha);
+    if (!pImageData)
+    {
+        throw std::runtime_error("Failed to load cubemap texture image: " + filePath);
+    }
+
+    Bitmap source(texWidth, texHeight, 4, eBitmapFormat_UnsignedByte, (void*)pImageData);
+    std::vector<Bitmap> cubemap;
+    int32_t faceSize = convertEquirectangularToCubemap(source, cubemap);
+    stbi_image_free((void*)pImageData);
+
+    // Step2 : create the image object and allocate memory
+    VkFormat imageFormat = VK_FORMAT_R8G8B8A8_SRGB;
+    int32_t bytesPerPixel = getBytesPerTexFormat(imageFormat);
+    size_t singleFaceNumBytes = faceSize * faceSize * bytesPerPixel;
+    size_t totalNumBytes = singleFaceNumBytes * 6;
+    char* pCubemapPixels = new char[totalNumBytes];
+    for (int32_t faceIdx = 0; faceIdx < 6; ++faceIdx)
+    {
+        memcpy(pCubemapPixels + faceIdx * singleFaceNumBytes, cubemap[faceIdx].data_.data(), singleFaceNumBytes);
+    }
+
+    createTextureFromData(pCubemapPixels, faceSize, faceSize, imageFormat, true, outTexture);
+
+    delete[] pCubemapPixels;
+
+    // std::cout<< "Cubemap texture created successfully from file: " << filePath << std::endl;
+}
+
+void VulkanCore::createTextureFromData(const void* pixels, uint32_t width, uint32_t height, VkFormat format,
+                                       bool isCubemap, Texture& outTexture)
+{
+    // Step1 : create the image object and allocate memory
+    VkImageUsageFlagBits usage = (VkImageUsageFlagBits)(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+    VkMemoryPropertyFlagBits memProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    createImage(outTexture, width, height, format, usage, memProperties, isCubemap);
+
+    // Step2 : Upload pixel data to the texture
+    int32_t layerCount = isCubemap ? 6 : 1;
+    updateTextureImage(outTexture, width, height, format, layerCount, pixels, isCubemap);
+
+    // Step3 : create the image view
+    VkImageAspectFlags aspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
+    outTexture.mImageView = createImageView(mLogicalDevice, outTexture.mImage, format, aspectFlags, isCubemap);
+
+    VkFilter minFilter = VK_FILTER_LINEAR;
+    VkFilter magFilter = VK_FILTER_LINEAR;
+    VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+
+    // Step4 : create the texture sampler
+    outTexture.mSampler = createTextureSampler(mLogicalDevice, minFilter, magFilter, addressMode);
+
+    // std::cout << "Texture created successfully from data. (" << width << "x" << height << ")" << std::endl;
 }
 
 void VulkanCore::createImage(Texture& outTexture, uint32_t width, uint32_t height, VkFormat format,
-                             VkImageUsageFlags usage, VkMemoryPropertyFlags reqMemPropFlags)
+                             VkImageUsageFlags usage, VkMemoryPropertyFlags reqMemPropFlags, bool isCubemap)
 {
     // Step 1: Create image
     VkImageCreateInfo imageCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
         .pNext = nullptr,
-        .flags = 0,
+        .flags = isCubemap ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : (VkImageCreateFlags)0,
         .imageType = VK_IMAGE_TYPE_2D,
         .format = format,
         .extent = {.width = static_cast<uint32_t>(width), .height = static_cast<uint32_t>(height), .depth = 1},
         .mipLevels = 1,
-        .arrayLayers = 1,
+        .arrayLayers = isCubemap ? 6U : 1U,
         .samples = VK_SAMPLE_COUNT_1_BIT,
         .tiling = VK_IMAGE_TILING_OPTIMAL,
         .usage = usage,
@@ -906,12 +967,12 @@ void VulkanCore::createImage(Texture& outTexture, uint32_t width, uint32_t heigh
 }
 
 void VulkanCore::updateTextureImage(Texture& outTexture, uint32_t width, uint32_t height, VkFormat format,
-                                    const void* pixels)
+                                    int32_t layerCount, const void* pixels, bool isCubemap)
 {
 
     int32_t bytesPerPixel = 4; // Assuming 4 bytes per pixel (RGBA)
     VkDeviceSize layerSize = width * height * bytesPerPixel;
-    VkDeviceSize imageSize = layerSize; // For single layer image
+    VkDeviceSize imageSize = layerCount * layerSize; // Total size for all layers
 
     // Create staging buffer
     BufferAndMemory stagingTexture =
@@ -921,24 +982,25 @@ void VulkanCore::updateTextureImage(Texture& outTexture, uint32_t width, uint32_
     stagingTexture.update(mLogicalDevice, pixels, imageSize);
 
     // Transition image layout to TRANSFER_DST_OPTIMAL
-    transitionImageLayout(outTexture.mImage, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    transitionImageLayout(outTexture.mImage, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                          layerCount);
 
     // Copy buffer to image
     copyBufferToImage(stagingTexture.mBuffer, outTexture.mImage, static_cast<uint32_t>(width),
-                      static_cast<uint32_t>(height));
+                      static_cast<uint32_t>(height), layerSize, layerCount);
 
     // Transition image layout to SHADER_READ_ONLY_OPTIMAL
     transitionImageLayout(outTexture.mImage, format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
+                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, layerCount);
     // Clean up staging buffer
     stagingTexture.Destroy(mLogicalDevice);
 }
 
-void VulkanCore::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout)
+void VulkanCore::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout,
+                                       int32_t layerCount)
 {
     BeginCommandBuffer(mCopyCmdBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-    imageMemBarrier(mCopyCmdBuffer, image, format, oldLayout, newLayout);
+    imageMemBarrier(mCopyCmdBuffer, image, format, oldLayout, newLayout, layerCount);
     submitCopyCommand();
 }
 
@@ -949,24 +1011,29 @@ void VulkanCore::submitCopyCommand()
     mGraphicsQueue.waitIdle(); // flush the command buffer
 }
 
-void VulkanCore::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height)
+void VulkanCore::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height,
+                                   VkDeviceSize layerSize, int32_t layerCount)
 {
     BeginCommandBuffer(mCopyCmdBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
-    VkBufferImageCopy bufferImageCopy = {.bufferOffset = 0,
-                                         .bufferRowLength = 0,
-                                         .bufferImageHeight = 0,
-                                         .imageSubresource =
-                                             {
-                                                 .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                                                 .mipLevel = 0,
-                                                 .baseArrayLayer = 0,
-                                                 .layerCount = 1,
-                                             },
-                                         .imageOffset = {0, 0, 0},
-                                         .imageExtent = {width, height, 1}};
-
-    vkCmdCopyBufferToImage(mCopyCmdBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &bufferImageCopy);
+    std::vector<VkBufferImageCopy> bufferImageCopies(layerCount);
+    for (int32_t layerIdx = 0; layerIdx < layerCount; ++layerIdx)
+    {
+        bufferImageCopies[layerIdx] = {.bufferOffset = layerIdx * layerSize,
+                                       .bufferRowLength = 0,
+                                       .bufferImageHeight = 0,
+                                       .imageSubresource =
+                                           {
+                                               .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                                               .mipLevel = 0,
+                                               .baseArrayLayer = static_cast<uint32_t>(layerIdx),
+                                               .layerCount = 1,
+                                           },
+                                       .imageOffset = {0, 0, 0},
+                                       .imageExtent = {width, height, 1}};
+    }
+    vkCmdCopyBufferToImage(mCopyCmdBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                           static_cast<uint32_t>(layerCount), bufferImageCopies.data());
 
     submitCopyCommand();
 }
@@ -984,15 +1051,16 @@ void VulkanCore::createDepthResources()
         VkImageUsageFlagBits usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
         VkMemoryPropertyFlagBits memProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
         createImage(mDepthImages[i], surfaceCaps.currentExtent.width, surfaceCaps.currentExtent.height, depthFormat,
-                    usage, memProperties);
+                    usage, memProperties, false);
 
         // Transition depth image layout
         transitionImageLayout(mDepthImages[i].mImage, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED,
-                              VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+                              VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 1);
 
         // Create depth image view
         VkImageAspectFlags aspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT;
-        mDepthImages[i].mImageView = createImageView(mLogicalDevice, mDepthImages[i].mImage, depthFormat, aspectFlags);
+        mDepthImages[i].mImageView =
+            createImageView(mLogicalDevice, mDepthImages[i].mImage, depthFormat, aspectFlags, false);
     }
 }
 

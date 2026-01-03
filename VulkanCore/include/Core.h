@@ -123,14 +123,20 @@ class VulkanCore
     void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
     void createTextureImageFromData(Texture& outTexture, const void* pixels, int texWidth, int texHeight,
-                                    VkFormat imageFormat);
+                                    VkFormat imageFormat, bool isCubemap);
+    void createCubemapTexture(std::string filePath, Texture& outTexture);
+    void createTextureFromData(const void* pixels, uint32_t width, uint32_t height, VkFormat format, bool isCubemap,
+                               Texture& outTexture);
     void createImage(Texture& outTexture, uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage,
-                     VkMemoryPropertyFlags memProperties);
-    void updateTextureImage(Texture& outTexture, uint32_t width, uint32_t height, VkFormat format, const void* pixels);
+                     VkMemoryPropertyFlags memPropertiesj, bool isCubemap);
+    void updateTextureImage(Texture& outTexture, uint32_t width, uint32_t height, VkFormat format, int32_t layerCount,
+                            const void* pixels, bool isCubemap);
 
-    void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
+    void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout,
+                               int32_t layerCount);
     void submitCopyCommand();
-    void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
+    void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height, VkDeviceSize layerSize,
+                           int32_t layerCount);
     void createDepthResources();
 
     void getInstanceVersion();
