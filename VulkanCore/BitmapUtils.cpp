@@ -102,8 +102,9 @@ static void sphericalToCartesian(float theta, float phi, float& x, float& y, flo
 static void sampleEquirectangular(const Bitmap& source, float x, float y, float z, uint8_t* outColor)
 {
     // Convert Cartesian to spherical coordinates
-    float theta = atan2(y, x);
-    float phi = acos(z);
+    // For equirectangular: theta rotates around Y-axis, phi is angle from Y-axis
+    float theta = atan2(z, x);
+    float phi = acos(y);
 
     // Convert to texture coordinates
     float u = (theta + M_PI) / (2.0f * M_PI);
@@ -132,65 +133,77 @@ static void sampleEquirectangular(const Bitmap& source, float x, float y, float 
 int32_t convertEquirectangularToCubemap(const Bitmap& source, std::vector<Bitmap>& outCubemap)
 {
     // Determine cube face size (typically use source height as face size)
-    // This gives reasonable results for most equirectangular images
     const int32_t faceSize = source.h_ / 2;
 
     // Create 6 cube faces
     outCubemap.clear();
     outCubemap.reserve(6);
 
-    // Cube face orientations (right, left, top, bottom, front, back)
-    // Each face uses different coordinate transformations
-    const int32_t directions[6][3] = {
-        {1, 0, 2}, // +X (right)
-        {1, 0, 2}, // -X (left)
-        {0, 2, 1}, // +Y (top)
-        {0, 2, 1}, // -Y (bottom)
-        {0, 1, 2}, // +Z (front)
-        {0, 1, 2}  // -Z (back)
-    };
-
-    const int32_t signs[6][3] = {
-        {1, -1, -1}, // +X
-        {-1, -1, 1}, // -X
-        {1, 1, 1},   // +Y
-        {1, -1, -1}, // -Y
-        {1, -1, 1},  // +Z
-        {-1, -1, -1} // -Z
-    };
-
+    // Vulkan cubemap face order: +X, -X, +Y, -Y, +Z, -Z
     for (int32_t face = 0; face < 6; ++face)
     {
         // Create bitmap for this face
         Bitmap faceBitmap(faceSize, faceSize, source.comp_, source.fmt_);
 
         // Generate each pixel for this cube face
-        for (int32_t y = 0; y < faceSize; ++y)
+        for (int32_t j = 0; j < faceSize; ++j)
         {
-            for (int32_t x = 0; x < faceSize; ++x)
+            for (int32_t i = 0; i < faceSize; ++i)
             {
                 // Convert pixel coordinate to [-1, 1] range
-                float u = (2.0f * static_cast<float>(x) / static_cast<float>(faceSize - 1)) - 1.0f;
-                float v = (2.0f * static_cast<float>(y) / static_cast<float>(faceSize - 1)) - 1.0f;
+                float u = (2.0f * static_cast<float>(i) / static_cast<float>(faceSize - 1)) - 1.0f;
+                float v = (2.0f * static_cast<float>(j) / static_cast<float>(faceSize - 1)) - 1.0f;
 
-                // Calculate 3D direction vector for this cube face pixel
-                float dir[3] = {0.0f, 0.0f, 0.0f};
-                dir[directions[face][0]] = u * signs[face][0];
-                dir[directions[face][1]] = v * signs[face][1];
-                dir[directions[face][2]] = 1.0f * signs[face][2];
+                // Calculate 3D direction vector based on cubemap face
+                // Vulkan coordinate system: +X right, +Y down, +Z forward
+                float x, y, z;
+
+                switch (face)
+                {
+                    case 0: // +X (right)
+                        x = 1.0f;
+                        y = -v;
+                        z = -u;
+                        break;
+                    case 1: // -X (left)
+                        x = -1.0f;
+                        y = -v;
+                        z = u;
+                        break;
+                    case 2: // +Y (down/bottom in Vulkan)
+                        x = u;
+                        y = 1.0f;
+                        z = -v;
+                        break;
+                    case 3: // -Y (up/top in Vulkan)
+                        x = u;
+                        y = -1.0f;
+                        z = v;
+                        break;
+                    case 4: // +Z (forward)
+                        x = u;
+                        y = -v;
+                        z = 1.0f;
+                        break;
+                    case 5: // -Z (backward)
+                        x = -u;
+                        y = -v;
+                        z = -1.0f;
+                        break;
+                }
 
                 // Normalize direction vector
-                float len = sqrt(dir[0] * dir[0] + dir[1] * dir[1] + dir[2] * dir[2]);
-                dir[0] /= len;
-                dir[1] /= len;
-                dir[2] /= len;
+                float len = sqrt(x * x + y * y + z * z);
+                x /= len;
+                y /= len;
+                z /= len;
 
                 // Sample from equirectangular map
                 uint8_t color[4] = {0, 0, 0, 255};
-                sampleEquirectangular(source, dir[0], dir[1], dir[2], color);
+                sampleEquirectangular(source, x, y, z, color);
 
                 // Write to face bitmap
-                const int32_t pixelIndex = (y * faceSize + x) * source.comp_;
+                const int32_t pixelIndex = (j * faceSize + i) * source.comp_;
                 for (int32_t c = 0; c < source.comp_; ++c)
                 {
                     faceBitmap.data_[pixelIndex + c] = color[c];
