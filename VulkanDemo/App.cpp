@@ -26,8 +26,8 @@ namespace VulkanApp
 App::App(int32_t width, int32_t height)
     : mWindow{nullptr}, mVulkanCore{}, mGraphicsQueue{nullptr}, mNumImages{0}, mCommandBuffers{},
       mVSShaderModule{VK_NULL_HANDLE}, mFSShaderModule{VK_NULL_HANDLE}, mWindowWidth{width},
-      mWindowHeight{height}, mCamera{nullptr}, mGraphicsPipelineV2{nullptr}, mModel{nullptr}, mImGuiRenderer{nullptr},
-      mImGuiWidth{100}, mImGuiHeight{500}, mShowImGui{true},
+      mWindowHeight{height}, mCamera{nullptr}, mGraphicsPipelineV2{nullptr}, mModel{nullptr},
+      mImGuiRenderer{nullptr}, mSkybox{nullptr}, mImGuiWidth{100}, mImGuiHeight{500}, mShowImGui{true},
       mClearColor{0.0f, 1.0f, 0.0f}, mPosition{0.0f, 0.0f, 0.0f}, mRotation{0.0f, 0.0f, 0.0f}, mScale{1.0f}
 {
 }
@@ -85,7 +85,15 @@ App::~App()
         mImGuiRenderer = nullptr;
     }
 
-    // 9. Cleanup Vulkan core resources in destructror of VulkanCore
+    // 9. Destroy skybox
+    if (mSkybox)
+    {
+        mSkybox->destroy();
+        delete mSkybox;
+        mSkybox = nullptr;
+    }
+
+    // 10. Cleanup Vulkan core resources in destructror of VulkanCore
 }
 
 void App::init(std::string appName)
@@ -100,6 +108,7 @@ void App::init(std::string appName)
     mGraphicsQueue = mVulkanCore.getGraphicsQueue();
     createShaders();
     createMesh();
+    mSkybox = new VulkanCore::SkyBox(&mVulkanCore, "VulkanDemo/assets/skybox/piazza_bologni_1k.hdr");
     createUniformBuffers();
     createPipeline();
     createCommandBuffers();
@@ -360,6 +369,8 @@ void App::updateUniformBuffer(uint32_t currentImage)
     glm::mat4 modelMatrix = translation * rotation * scale;
     glm::mat4 vp = mCamera->getVPMatrix();
     mModel->update(currentImage, vp * modelMatrix);
+
+    mSkybox->update(currentImage, vp);
 }
 
 void App::defaultCreateCameraPers()
@@ -403,11 +414,12 @@ void App::recordCommandBufferInteral(bool withSecondBarrier, std::vector<VkComma
         // On subsequent frames: coming from PRESENT_SRC_KHR, but UNDEFINED transition is safe
         VulkanCore::imageMemBarrier(commandBuffers[i], mVulkanCore.getSwapchainImage(i),
                                     mVulkanCore.getSwapchainSurfaceFormat(), VK_IMAGE_LAYOUT_UNDEFINED,
-                                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+                                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 1);
 
         mVulkanCore.beginDynamicRendering(commandBuffers[i], i, &clearColor, &clearDepth);
         mGraphicsPipelineV2->bind(commandBuffers[i]);
         mModel->recordCommandBuffer(commandBuffers[i], mGraphicsPipelineV2, i);
+        mSkybox->recordCommandBuffer(commandBuffers[i], i);
 
         vkCmdEndRendering(commandBuffers[i]);
 
@@ -416,7 +428,7 @@ void App::recordCommandBufferInteral(bool withSecondBarrier, std::vector<VkComma
             // For standalone rendering (no ImGui), do final transition to present
             VulkanCore::imageMemBarrier(commandBuffers[i], mVulkanCore.getSwapchainImage(i),
                                         mVulkanCore.getSwapchainSurfaceFormat(),
-                                        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+                                        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, 1);
         }
 
         if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS)
@@ -489,11 +501,6 @@ void App::updateGUI()
     if (ImGui::CollapsingHeader("🔄 Rotation"))
     {
         ImGui::PushItemWidth(-100);
-
-        // Convert to degrees for better user experience
-        float degX = glm::degrees(mRotation.x);
-        float degY = glm::degrees(mRotation.y);
-        float degZ = glm::degrees(mRotation.z);
 
         ImGui::Text("X:");
         ImGui::SameLine(50);

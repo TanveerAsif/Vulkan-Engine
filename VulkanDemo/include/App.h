@@ -16,6 +16,7 @@
 #include "ImGuiRenderer.h"
 #include "Queue.h"
 #include "SimpleMesh.h"
+#include "SkyBox.h"
 #include "VulkanModel.h"
 
 namespace VulkanApp
@@ -73,6 +74,7 @@ class App : public VulkanCore::GLFWCallbacks
     VulkanCore::GraphicsPipelineV2* mGraphicsPipelineV2;
     VulkanCore::VulkanModel* mModel;
     VulkanCore::ImGuiRenderer* mImGuiRenderer;
+    VulkanCore::SkyBox* mSkybox;
     int32_t mImGuiWidth, mImGuiHeight;
 
     bool mShowImGui;

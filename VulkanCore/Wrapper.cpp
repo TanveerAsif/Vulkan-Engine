@@ -43,7 +43,7 @@ bool hasStencilComponent(VkFormat Format)
 
 // Copied from the "3D Graphics Rendering Cookbook"
 void imageMemBarrier(VkCommandBuffer CmdBuf, VkImage Image, VkFormat Format, VkImageLayout OldLayout,
-                     VkImageLayout NewLayout)
+                     VkImageLayout NewLayout, int32_t layerCount)
 {
     VkImageMemoryBarrier barrier = {.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
                                     .pNext = NULL,
@@ -58,7 +58,7 @@ void imageMemBarrier(VkCommandBuffer CmdBuf, VkImage Image, VkFormat Format, VkI
                                                                                 .baseMipLevel = 0,
                                                                                 .levelCount = 1,
                                                                                 .baseArrayLayer = 0,
-                                                                                .layerCount = (uint32_t)1}};
+                                                                                .layerCount = (uint32_t)layerCount}};
 
     VkPipelineStageFlags sourceStage = VK_PIPELINE_STAGE_NONE;
     VkPipelineStageFlags destinationStage = VK_PIPELINE_STAGE_NONE;
@@ -214,21 +214,25 @@ void imageMemBarrier(VkCommandBuffer CmdBuf, VkImage Image, VkFormat Format, VkI
     vkCmdPipelineBarrier(CmdBuf, sourceStage, destinationStage, 0, 0, NULL, 0, NULL, 1, &barrier);
 }
 
-VkImageView createImageView(VkDevice Device, VkImage Image, VkFormat Format, VkImageAspectFlags AspectFlags)
+VkImageView createImageView(VkDevice Device, VkImage Image, VkFormat Format, VkImageAspectFlags AspectFlags,
+                            bool isCubemap)
 {
-    VkImageViewCreateInfo viewCreateInfo = {
-        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-        .pNext = NULL,
-        .flags = 0,
-        .image = Image,
-        .viewType = VK_IMAGE_VIEW_TYPE_2D,
-        .format = Format,
-        .components = VkComponentMapping{.r = VK_COMPONENT_SWIZZLE_IDENTITY,
-                                         .g = VK_COMPONENT_SWIZZLE_IDENTITY,
-                                         .b = VK_COMPONENT_SWIZZLE_IDENTITY,
-                                         .a = VK_COMPONENT_SWIZZLE_IDENTITY},
-        .subresourceRange = VkImageSubresourceRange{
-            .aspectMask = AspectFlags, .baseMipLevel = 0, .levelCount = 1, .baseArrayLayer = 0, .layerCount = 1}};
+    VkImageViewCreateInfo viewCreateInfo = {.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+                                            .pNext = NULL,
+                                            .flags = 0,
+                                            .image = Image,
+                                            .viewType = isCubemap ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_2D,
+                                            .format = Format,
+                                            .components = VkComponentMapping{.r = VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                             .g = VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                             .b = VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                             .a = VK_COMPONENT_SWIZZLE_IDENTITY},
+                                            .subresourceRange =
+                                                VkImageSubresourceRange{.aspectMask = AspectFlags,
+                                                                        .baseMipLevel = 0,
+                                                                        .levelCount = 1,
+                                                                        .baseArrayLayer = 0,
+                                                                        .layerCount = isCubemap ? 6u : 1u}};
 
     VkImageView imageView;
     VkResult result = vkCreateImageView(Device, &viewCreateInfo, NULL, &imageView);

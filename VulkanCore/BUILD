@@ -38,6 +38,7 @@ cc_library(
         "model/Model.cpp",
         "Queue.cpp",
         "Shader.cpp",
+        "SkyBox.cpp",
         "SimpleMesh.cpp",
         "Texture.cpp",
         "Wrapper.cpp",

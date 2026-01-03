@@ -1,4 +1,5 @@
 #include "GraphicsPipelineV2.h"
+#include "include/GraphicsPipelineV2.h"
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
@@ -15,6 +16,15 @@ GraphicsPipelineV2::GraphicsPipelineV2(VkDevice device, GLFWwindow* window, VkRe
 {
     createDescriptorSetLayout(true, true, true, true, false); // VB, IB, Uniform, Tex2D, Cubemap
     initCommon(window, renderPass, vsModule, fsModule, numImages, colorFormat, depthFormat, VK_COMPARE_OP_LESS);
+}
+
+GraphicsPipelineV2::GraphicsPipelineV2(PipelineDesc const& pd)
+    : mDevice(pd.mDevice), mGraphicsPipeline(VK_NULL_HANDLE), mPipelineLayout(VK_NULL_HANDLE),
+      mDescriptorPool(VK_NULL_HANDLE), mDescriptorSetLayout(VK_NULL_HANDLE), mNumImages(pd.mNumSwapchainImages)
+{
+    createDescriptorSetLayout(pd.mIsVB, pd.mIsIB, pd.mIsUniform, pd.mIsTex2D, pd.mIsCubemap);
+    initCommon(pd.mWindow, nullptr, pd.mVertexShaderModule, pd.mFragmentShaderModule, pd.mNumSwapchainImages,
+               pd.mColorFormat, pd.mDepthFormat, pd.mDepthCompareOp);
 }
 
 GraphicsPipelineV2::~GraphicsPipelineV2()
@@ -131,6 +141,20 @@ void GraphicsPipelineV2::updateDescriptorSets(const ModelDesc& modelDesc,
                     .pImageInfo = &ImageInfo[submeshIndex],
                 });
             }
+
+            // // Cubemap - only if cubemap exists
+            // if(isCubemap)
+            // {
+            //     writeDescriptorSets.push_back({
+            //         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            //         .dstSet = descriptorSets[imageIndex][submeshIndex],
+            //         .dstBinding = V2_BindingTextureCube,
+            //         .dstArrayElement = 0,
+            //         .descriptorCount = 1,
+            //         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            //         .pImageInfo = &ImageInfo[submeshIndex],
+            //     });
+            // }
         }
     }
 

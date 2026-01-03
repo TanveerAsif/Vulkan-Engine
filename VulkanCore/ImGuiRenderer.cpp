@@ -252,7 +252,7 @@ VkCommandBuffer ImGuiRenderer::prepareCommandBuffer(uint32_t imageIndex)
     // Transition image to PRESENT_SRC after all rendering is complete
     imageMemBarrier(mCommandBuffers[imageIndex], mVulkanCore->getSwapchainImage(imageIndex),
                     mVulkanCore->getSwapchainSurfaceFormat(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                    VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+                    VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, false);
 
     if (vkEndCommandBuffer(mCommandBuffers[imageIndex]) != VK_SUCCESS)
     {

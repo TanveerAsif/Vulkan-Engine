@@ -29,6 +29,7 @@ class Texture
     void destroy(VkDevice device);
     void LoadFromFile(const std::string& filePath);
     void Load(uint32_t bufferSize, void* pImageData);
+    void loadEctCubemap(const std::string& fileName);
 
     VkImage mImage{VK_NULL_HANDLE};
     VkDeviceMemory mImageMemory{VK_NULL_HANDLE};
