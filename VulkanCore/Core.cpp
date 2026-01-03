@@ -11,6 +11,7 @@
 #include <xcb/xcb.h>
 
 #include "Wrapper.h"
+#include "include/BitmapUtils.h"
 #include "include/Core.h"
 #include <cstring>
 
@@ -864,25 +865,25 @@ void VulkanCore::createCubemapTexture(std::string filePath, Texture& outTexture)
         throw std::runtime_error("Failed to load cubemap texture image: " + filePath);
     }
 
-    // Bitmap source(texWidth, texHeight, 4, eBitmapFormat_UnsignedByte, (void*)pImageData);
-    // std::vector<Bitmap> cubemap;
-    // int32_t faceSize = convertEquirectangularToCubemap(source, cubemap);
-    // stbi_image_free((void*)pImageData);
+    Bitmap source(texWidth, texHeight, 4, eBitmapFormat_UnsignedByte, (void*)pImageData);
+    std::vector<Bitmap> cubemap;
+    int32_t faceSize = convertEquirectangularToCubemap(source, cubemap);
+    stbi_image_free((void*)pImageData);
 
-    // // Step2 : create the image object and allocate memory
-    // VkFormat imageFormat = VK_FORMAT_R8G8B8A8_SRGB;
-    // int32_t bytesPerPixel = getBytesPerTexFormat(imageFormat);
-    // size_t singleFaceNumBytes = faceSize * faceSize * bytesPerPixel;
-    // size_t totalNumBytes = singleFaceNumBytes * 6;
-    // char* pCubemapPixels = new char[totalNumBytes];
-    // for (int32_t faceIdx = 0; faceIdx < 6; ++faceIdx)
-    // {
-    //     memcpy(pCubemapPixels + faceIdx * singleFaceNumBytes, cubemap[faceIdx].data_.data(), singleFaceNumBytes);
-    // }
+    // Step2 : create the image object and allocate memory
+    VkFormat imageFormat = VK_FORMAT_R8G8B8A8_SRGB;
+    int32_t bytesPerPixel = getBytesPerTexFormat(imageFormat);
+    size_t singleFaceNumBytes = faceSize * faceSize * bytesPerPixel;
+    size_t totalNumBytes = singleFaceNumBytes * 6;
+    char* pCubemapPixels = new char[totalNumBytes];
+    for (int32_t faceIdx = 0; faceIdx < 6; ++faceIdx)
+    {
+        memcpy(pCubemapPixels + faceIdx * singleFaceNumBytes, cubemap[faceIdx].data_.data(), singleFaceNumBytes);
+    }
 
-    // createTextureFromData(pCubemapPixels, faceSize, faceSize, imageFormat, true, outTexture);
+    createTextureFromData(pCubemapPixels, faceSize, faceSize, imageFormat, true, outTexture);
 
-    // delete[] pCubemapPixels;
+    delete[] pCubemapPixels;
 
     // std::cout<< "Cubemap texture created successfully from file: " << filePath << std::endl;
 }
@@ -890,12 +891,16 @@ void VulkanCore::createCubemapTexture(std::string filePath, Texture& outTexture)
 void VulkanCore::createTextureFromData(const void* pixels, uint32_t width, uint32_t height, VkFormat format,
                                        bool isCubemap, Texture& outTexture)
 {
-    // Step1 : create the image object and papulated it with pixels
+    // Step1 : create the image object and allocate memory
     VkImageUsageFlagBits usage = (VkImageUsageFlagBits)(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
     VkMemoryPropertyFlagBits memProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
     createImage(outTexture, width, height, format, usage, memProperties, isCubemap);
 
-    // Step2 : create the image view
+    // Step2 : Upload pixel data to the texture
+    int32_t layerCount = isCubemap ? 6 : 1;
+    updateTextureImage(outTexture, width, height, format, layerCount, pixels, isCubemap);
+
+    // Step3 : create the image view
     VkImageAspectFlags aspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
     outTexture.mImageView = createImageView(mLogicalDevice, outTexture.mImage, format, aspectFlags, isCubemap);
 
@@ -903,7 +908,7 @@ void VulkanCore::createTextureFromData(const void* pixels, uint32_t width, uint3
     VkFilter magFilter = VK_FILTER_LINEAR;
     VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 
-    // Step3 : create the texture sampler
+    // Step4 : create the texture sampler
     outTexture.mSampler = createTextureSampler(mLogicalDevice, minFilter, magFilter, addressMode);
 
     // std::cout << "Texture created successfully from data. (" << width << "x" << height << ")" << std::endl;

@@ -105,8 +105,17 @@ void SkyBox::destroy()
         mGraphicsPipeline = nullptr;
     }
 
-    vkDestroyShaderModule(mVulkanCore->getDevice(), mVertexShaderModule, nullptr);
-    vkDestroyShaderModule(mVulkanCore->getDevice(), mFragmentShaderModule, nullptr);
+    if (mVertexShaderModule != VK_NULL_HANDLE)
+    {
+        vkDestroyShaderModule(mVulkanCore->getDevice(), mVertexShaderModule, nullptr);
+        mVertexShaderModule = VK_NULL_HANDLE;
+    }
+
+    if (mFragmentShaderModule != VK_NULL_HANDLE)
+    {
+        vkDestroyShaderModule(mVulkanCore->getDevice(), mFragmentShaderModule, nullptr);
+        mFragmentShaderModule = VK_NULL_HANDLE;
+    }
 
     for (auto& uniformBuffer : mUniformBuffers)
     {
